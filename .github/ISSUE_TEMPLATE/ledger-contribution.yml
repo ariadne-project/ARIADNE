@@ -1,0 +1,56 @@
+name: Ledger contribution
+description: Propose a claim, correction, decision, or result for the ARIADNE ledger.
+title: "[Ledger]: "
+labels:
+  - ledger-contribution
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for public contributions to the provenance ledger. Do not include confidential, personal, restricted, or embargoed information. Submitting an entry does not make it an approved decision.
+
+  - type: input
+    id: title
+    attributes:
+      label: Short title
+      placeholder: "Example: Add workshop programme evidence"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Entry type
+      options:
+        - Observed
+        - User-reported
+        - Proposal
+        - Decision
+        - Result
+        - Correction
+    validations:
+      required: true
+
+  - type: textarea
+    id: claim
+    attributes:
+      label: Claim
+      description: State one clear claim or requested correction.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add a public link, repository path, meeting record, or state that evidence is pending.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: public-content
+    attributes:
+      label: Public-content confirmation
+      options:
+        - label: I confirm that this submission contains no confidential, personal, restricted, or embargoed information.
+          required: true
