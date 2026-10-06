@@ -1,0 +1,24 @@
+name: General issue
+description: Ask a question or report a problem with the repository.
+title: "[Issue]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for questions, typos, broken links, or unclear wording. Use the [ledger contribution form](https://github.com/ariadne-project/ARIADNE/issues/new?template=ledger-contribution.yml) for project claims, decisions, results, or corrections. Do not include confidential, personal, restricted, or embargoed information.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is the question, problem, or suggested change?
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: Add the relevant file, section, or URL if known.
+    validations:
+      required: false
