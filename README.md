@@ -77,6 +77,14 @@ Ledger entries are append-only and follow the [ledger entry template](CONTRIBUTI
 **Recorded by:** Tillman Heisner\
 **Supersedes:** none
 
+### 2026-10-12 - Pipeline architecture decided
+
+**Type:** Decision\
+**Claim:** Under interim authority, Tillman Heisner decided that ARIADNE's proposed pipeline will consist of an extraction agent, a deterministic verifier, a verification agent, and an inquiry agent sharing one issue format, with the scientist answering the questions and approving the final record.\
+**Evidence:** [Architecture](ARCHITECTURE.md#proposed-flow); [Interim decision authority](README.md#2026-10-12---interim-decision-authority-for-stage-1).\
+**Recorded by:** Tillman Heisner\
+**Supersedes:** none
+
 
 ## License
 
