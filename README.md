@@ -37,6 +37,46 @@ Ledger entries are append-only and follow the [ledger entry template](CONTRIBUTI
 **Recorded by:** Tillman Heisner\
 **Supersedes:** none
 
+### 2026-10-12 - Interim decision authority for Stage 1
+
+**Type:** User-reported\
+**Claim:** Tillman Heisner holds interim decision authority for the Stage 1 design until the pilot's decision authority is confirmed.\
+**Evidence:** Statement by Tillman Heisner; [Pilot](PILOT.md#proposed-participants).\
+**Recorded by:** Tillman Heisner\
+**Supersedes:** none
+
+### 2026-10-12 - Stage 1 benchmark datasets decided
+
+**Type:** Decision\
+**Claim:** Under interim authority, Tillman Heisner decided that Stage 1 will use 15 to 25 public STRENDA DB entries as Export XML input, with T9HQ4X and GNICYO as the development set and expected records derived by fixed rules plus hand-marked methodology facts.\
+**Evidence:** [Open questions, Q1](OPEN_QUESTIONS.md#q1---which-existing-datasets-should-be-used); [Interim decision authority](README.md#2026-10-12---interim-decision-authority-for-stage-1).\
+**Recorded by:** Tillman Heisner\
+**Supersedes:** none
+
+### 2026-10-12 - EnzymeML record requirements decided
+
+**Type:** Decision\
+**Claim:** Under interim authority, Tillman Heisner decided that draft EnzymeML records must be structurally valid, may leave required fields empty only where the input lacks the information, and must come with an evidence file and a not-mapped report; approved records must be fully valid.\
+**Evidence:** [Open questions, Q2](OPEN_QUESTIONS.md#q2---what-must-the-enzymeml-records-contain); [Interim decision authority](README.md#2026-10-12---interim-decision-authority-for-stage-1).\
+**Recorded by:** Tillman Heisner\
+**Supersedes:** none
+
+### 2026-10-12 - EnzymeML V2.0 target decided
+
+**Type:** Decision\
+**Claim:** Under interim authority, Tillman Heisner decided that the pilot will target EnzymeML V2.0 as defined at enzymeml-specifications commit bf9321f.\
+**Evidence:** [Open questions, Q3](OPEN_QUESTIONS.md#q3---which-enzymeml-target-should-be-tested); https://github.com/EnzymeML/enzymeml-specifications/tree/bf9321f720eaff48d315bad52aebc1765cf42188; [Interim decision authority](README.md#2026-10-12---interim-decision-authority-for-stage-1).\
+**Recorded by:** Tillman Heisner\
+**Supersedes:** none
+
+### 2026-10-12 - Stage 1 evaluation design decided
+
+**Type:** Decision\
+**Claim:** Under interim authority, Tillman Heisner decided that the extraction, verification, and inquiry agents will each be evaluated on a dataset built from the Q1 entries, with zero-shot and few-shot compared on the same test items; acceptance criteria remain open.\
+**Evidence:** [Open questions, Q4](OPEN_QUESTIONS.md#q4---how-should-extraction-and-verification-be-evaluated); [Interim decision authority](README.md#2026-10-12---interim-decision-authority-for-stage-1).\
+**Recorded by:** Tillman Heisner\
+**Supersedes:** none
+
 
 ## License
 

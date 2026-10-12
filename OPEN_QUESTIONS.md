@@ -5,16 +5,32 @@ These questions must be resolved to move ARIADNE from concept to pilot. Detailed
 ## Stage 1 - Establish the workflow
 
 ### Q1 - Which existing datasets should be used?
-Select a small set of enzyme reaction or kinetics datasets with reliable source files and reference information. Define the expected candidate EnzymeML records for each.
+
+1. **Source:** public STRENDA DB entries, as Export XML files stored unchanged with download date and checksum.
+2. **Selection:** 15 to 25 entries covering varied enzymes, kinetic parameters, units, compound roles, one or several datasets, and with or without methodology text.
+3. **Split:** T9HQ4X and GNICYO form the development set; all others are test entries. Entries from one publication stay in one set.
+4. **Expected records:** derived by fixed rules, plus hand-marked methodology facts (see Q4).
 
 ### Q2 - What must the EnzymeML records contain?
-Agree which scientific information, metadata, units, identifiers, relationships, and source evidence must survive extraction.
+
+1. **Draft record:** structurally valid against the schema in Q3: defined fields only, correct types and values, every referenced ID present.
+2. **Empty fields:** allowed only where the input lacks the information; each is raised as an issue.
+3. **Approved record:** fully valid, with all required fields filled.
+4. **Accompanying files:** an evidence file locating every filled value, and a not-mapped report of information EnzymeML cannot hold (for example a His-tag). Links between parameters, substrates, and datasets must be traceable.
+5. **Values:** defined per input in the test datasets.
 
 ### Q3 - Which EnzymeML target should be tested?
-Select the EnzymeML version, validation method, and any tool or database used to test the resulting records.
+EnzymeML V2.0 at enzymeml-specifications commit bf9321f (`specifications/v2.md`, `schemes/v2/enzymeml-v2.json`). Records declare version `2.0`.
 
 ### Q4 - How should extraction and verification be evaluated?
-Define the zero-shot and few-shot comparison, separation between extractor and verifier agents, test errors, and acceptance criteria for source support, metadata, units, and ambiguity.
+
+One dataset per agent, built from the Q1 entries. Expected values cite their XML location or a hand-marked methodology quote.
+
+1. **Extraction:** fields scored as correct, wrong, correctly empty, invented, or missed. Variants with removed or changed values test that the agent reads the input.
+2. **Verification:** records with planted defects, clean controls, and source conflicts. Issues are classed as confirmed, rejected, source conflict, or gap. The deterministic verifier checks only structure, units, and citations.
+3. **Inquiry:** questions carry the issue IDs they address and are scored by topic coverage, unwanted questions, and question count. A person rates the wording.
+4. **Zero-shot and few-shot:** same test items, with examples only from the development set. Agents keep separate prompts, never see expected outputs, and are tested alone and in sequence.
+5. **Acceptance criteria:** not yet set. Proposed gates: no invented values, no unit errors, every filled value cited, every source conflict flagged.
 
 ## Stage 2 - Apply it with researchers
 
