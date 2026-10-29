@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:expected-value-table:v0.5",
+  "title": "Expected-value table",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.0 (Draft); the document wins. Proposal: Tillman Heisner accepts, changes or replaces it (Evaluation interfaces, section 4). The expected values for one extraction item (section 4.2), one row per source anchor and field, with the header of section 4.1 rule 1.",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.0 (Draft); the document wins. Section 4.1 rule 4 leaves the file format (CSV, JSON or another) to the builder; this file describes the JSON form, with one object per row in rows. Key names that section 4 does not give are marked 'Proposed name' in their description. Not expressed here: that row keys are unique, that unit_id is in the unit table, and that the table has full rows for every non-SOFTWARE field of every anchored object (4.2, Full rows).",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The item the file is for (4.1 rule 1)."
+    },
+    "variant_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The variant the file is for (4.1 rule 1)."
+    },
+    "input_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/input_file"},
+      "description": "Proposed name. The input-side files the expected file was built for, each with its SHA-256 (4.1 rule 1). If a checksum no longer matches, the scorer skips the item and reports it."
+    },
+    "evaluation_interfaces_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. The version of design/EVALUATION_INTERFACES.md the file follows (4.1 rule 1)."
+    },
+    "expected_file_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. The version of this expected file; a reviewed finding goes into a new version, and scores name it (4.1 rule 5)."
+    },
+    "canary": {
+      "type": "string",
+      "minLength": 32,
+      "description": "Only if canaries are adopted (5.3): the file's canary, random and at least 32 characters long. Option CS7, a canary in every row, would add a row field."
+    },
+    "rows": {"type": "array", "items": {"$ref": "#/$defs/row"}, "description": "Proposed name. The file's rows."}
+  },
+  "required": ["input_files", "evaluation_interfaces_version", "expected_file_version", "rows"],
+  "additionalProperties": false,
+  "allOf": [{"anyOf": [{"required": ["item_id"]}, {"required": ["variant_id"]}]}],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{64}$(?![\\s\\S])",
+      "description": "A SHA-256 checksum: 64 hexadecimal characters, computed by software (Evaluation interfaces 3.1)."
+    },
+    "input_file": {
+      "type": "object",
+      "description": "One input-side file the expected file was built for, with its checksum (4.1 rule 1). Field names from Evaluation interfaces 3.1.",
+      "properties": {
+        "file_name": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["file_name", "sha256"],
+      "additionalProperties": false
+    },
+    "alternative": {
+      "type": "object",
+      "description": "Another statement of the same amount, as (value, unit, xpath, quote) (4.2, alternatives).",
+      "properties": {
+        "value": {"not": {"type": "null"}},
+        "unit": {"type": "string", "minLength": 1},
+        "xpath": {"type": "string", "minLength": 1},
+        "quote": {"type": "string", "minLength": 1}
+      },
+      "required": ["value", "xpath", "quote"],
+      "additionalProperties": false
+    },
+    "row": {
+      "type": "object",
+      "description": "One row per source anchor and field, keyed by (object_type, anchor_xpath plus anchor_label, field) (4.2). Columns as in the 4.2 table.",
+      "properties": {
+        "object_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The EnzymeML object, for example Parameter, Measurement, MeasurementData, SmallMolecule, Protein, Vessel."
+        },
+        "anchor_xpath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The input element the object comes from; for an object that only free text states, the methodology element."
+        },
+        "anchor_label": {
+          "type": "string",
+          "description": "Blank for structured anchors. For a methodology anchor, a short label that tells objects of one type apart, for example vessel."
+        },
+        "anchor_aliases": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "Other elements where the input states the same object."
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The EnzymeML field, for example ph; parameter links use link.species_id and link.measurement_id. SOFTWARE fields have no rows."
+        },
+        "value": {
+          "not": {"type": "null"},
+          "description": "The expected value, typed where possible; left out if empty."
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The unit as the input spells it, if any."
+        },
+        "unit_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The unit's meaning, as an id from the unit table."
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/alternative"},
+          "description": "Other statements of the same amount that the input makes; each is accepted as correct."
+        },
+        "xpath": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1},
+          "description": "The accepted citation locations (one or more)."
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The verbatim quote the value rests on."
+        },
+        "passage": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Hand-marked rows only: the passage Tillman Heisner marked."
+        },
+        "filled": {"enum": ["filled", "empty"]},
+        "origin": {
+          "enum": ["rule", "hand_marked"],
+          "description": "rule: derived by a named fixed rule from structured XML. hand_marked: a methodology fact marked by Tillman Heisner, with its passage and quote (4.1 rule 2)."
+        },
+        "pending": {
+          "type": "boolean",
+          "description": "Proposed name. true for a row not yet settled: left out of scores and listed (4.1 rule 3). Frozen test-set files hold no pending rows."
+        }
+      },
+      "required": ["object_type", "anchor_xpath", "field", "filled", "origin"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$comment": "4.1 rule 10 (expected-file check): every filled row has an xpath and a quote; 4.2: the value is left out if empty.",
+          "if": {"properties": {"filled": {"const": "filled"}}, "required": ["filled"]},
+          "then": {"required": ["value", "xpath", "quote"]},
+          "else": {"properties": {"value": false}}
+        },
+        {
+          "$comment": "4.1 rule 10: every hand-marked row also has a passage; 4.2: passage is for hand-marked rows only.",
+          "if": {"properties": {"origin": {"const": "hand_marked"}}, "required": ["origin"]},
+          "then": {"required": ["passage"]},
+          "else": {"properties": {"passage": false}}
+        }
+      ],
+      "examples": [
+        {
+          "object_type": "Parameter",
+          "anchor_xpath": "/experiment/datasets/dataset[1]/resultSet/kineticParameter/value[2]",
+          "field": "value",
+          "value": 0.082,
+          "unit": "mM",
+          "unit_id": "millimolar",
+          "xpath": ["/experiment/datasets/dataset[1]/resultSet/kineticParameter/value[2]/@value"],
+          "quote": "0.082",
+          "filled": "filled",
+          "origin": "rule"
+        },
+        {
+          "object_type": "MeasurementData",
+          "anchor_xpath": "/experiment/datasets/dataset[1]/assayConditions/smallCompound[3]",
+          "field": "prepared",
+          "filled": "empty",
+          "origin": "rule"
+        },
+        {
+          "object_type": "Vessel",
+          "anchor_xpath": "/experiment/methodology",
+          "anchor_label": "vessel",
+          "field": "volume",
+          "value": 0.1,
+          "unit": "ml",
+          "unit_id": "millilitre",
+          "xpath": ["/experiment/methodology"],
+          "quote": "0.1",
+          "passage": "Reaction volume: 0.1ml.",
+          "filled": "filled",
+          "origin": "hand_marked"
+        }
+      ]
+    }
+  }
+}

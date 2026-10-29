@@ -1,12 +1,14 @@
 # ARIADNE: Agentic Research Infrastructure for Auditable Data Normalization and Exchange
 
 > Make the FAIR and scientifically trustworthy choice the easiest choice.
+> **Design documentation only:** Stage 1 remains preliminary; Stage 2 and future contracts remain proposed. Review additions are non-normative guidance or proposals, not new scientific decisions. No scientific-data processing software is implemented. See [Review design and limitations](design/REHEARSAL_REVIEW.md).
+
 
 ARIADNE is a system designed to make FAIR data practices easier by helping researchers turn familiar scientific files into structured, evidence-linked records. Its proposed architecture would use EnzymeML for enzyme reaction and kinetics data and linked companion schemas for data outside EnzymeML's scope. Few-shot-guided extraction agents would propose records; deterministic validation, independent verifier agents, and human review would assess them before acceptance.
 
 This repository currently serves as ARIADNE's concept and provenance ledger. Development is intended to begin with a small, co-designed ELEGANCE pilot; no scientific-data processing software is implemented yet.
 
-See the proposed [Pilot](PILOT.md), [Architecture](ARCHITECTURE.md), and [Open questions](OPEN_QUESTIONS.md). To contribute, see [Contributing](CONTRIBUTING.md).
+See the proposed [Pilot](PILOT.md), [Architecture](ARCHITECTURE.md), [Issue format](ISSUE_FORMAT.md), [design documents](ARCHITECTURE.md#design-documents), and [Open questions](OPEN_QUESTIONS.md). To contribute, see [Contributing](CONTRIBUTING.md).
 
 
 ## Provenance ledger
@@ -82,6 +84,15 @@ Ledger entries are append-only and follow the [ledger entry template](CONTRIBUTI
 **Type:** Decision\
 **Claim:** Under interim authority, Tillman Heisner decided that ARIADNE's proposed pipeline will consist of an extraction agent, a deterministic verifier, a verification agent, and an inquiry agent sharing one issue format, with the scientist answering the questions and approving the final record.\
 **Evidence:** [Architecture](ARCHITECTURE.md#proposed-flow); [Interim decision authority](README.md#2026-10-12---interim-decision-authority-for-stage-1).\
+**Recorded by:** Tillman Heisner\
+**Supersedes:** none
+
+
+### 2026-10-29 - Workflow and review design consolidated
+
+**Type:** Result\
+**Claim:** Consolidate Stage 1 workflows, Issue format 0.10, scientific review, approval, recovery, monitoring and evaluation contracts; add partial-result guidance and future input/reuse proposals. Scientific-data processing remains unimplemented.\
+**Evidence:** [Workflow](design/WORKFLOW.md); [Issue format](ISSUE_FORMAT.md); [Review design and limitations](design/REHEARSAL_REVIEW.md); [Package adoption register](design/PACKAGE_ADOPTION.md).\
 **Recorded by:** Tillman Heisner\
 **Supersedes:** none
 

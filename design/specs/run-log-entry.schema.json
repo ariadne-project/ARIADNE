@@ -1,0 +1,3869 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:run-log-entry:v1.4",
+  "title": "Run-log entry",
+  "description": "Derived from design/RUN_RECORDS.md 1.4; the document wins. Draft. One entry of a run's run-log.jsonl or of a batch's batch-log.jsonl (sections 2.2 to 2.4, 2.7 and 2.8): the common fields of section 2.3, and for each entry kind the fields of the tables of sections 2.3 and 2.4. The request log and the monitor log have files of their own (request-log-entry, monitor-record).",
+  "$comment": "Derived from design/RUN_RECORDS.md 1.4; the document wins. Key names that sections 2.3 and 2.4 do not give are marked 'Proposed name' in their description; values they do not give are marked 'Proposed values'. The names that Tillman Heisner accepted on 2026-10-28 (base, result with applied and refused_stale, version, rate_law_not_passed, environment, monitors_not_ready and monitor_stop) are not marked. A batch-log entry has batch_id in place of run_id, record_id and round. The checksums the entries hold are kept in the run log only (sections 1.2 and 2.9; D13 A). Not expressed here, because a schema sees one entry only: that seq runs without gaps; that entry ids are unique; that cause, packet_manifest, admission and rerun_of name entries and attempts that exist; that first, retry and continuation of by_class add up to forwarded and unclassifiable is at most refused; that totals and counters equal the sums of the request log; that each attempt has one attempt_started and one attempt_ended entry; that checksums match the files they name; which source writes which kind; which report an admission entry names, the most recent one bound to the manifest or, where none is, the most recent report line of the index (Containment 12.4); which of several void conditions gave an attempt its code (section 2.4); whether a batch is a held-out assessment, which needs its item lists, and so whether batch_started must carry evaluation_plan and tuning_disclosure (Evaluation interfaces 7.1, rule 9); whether the items of a batch share one split (rule 10); whether the monitoring-deadline status that an admission entry records admits the run's kind (Containment 12.4); that an approval statement names the current stored approval summary of its final check (Handoffs 2.12); that a pointer_retarget or pointer_hold entry agrees with the binding map and the record; and, in a test run of a containment suite run, which run kind a test stands for, and so which followed_by value it records (section 2.4). The last three examples are one structural edit and what software then did to the live pointers (Issue format 7.1, Live pointers): measurement m0 was split into two new measurements, which the edit declares in split_ids, so the issue on m0 is held, and the issue on m1, which moved from index 1 to index 2, follows its id. The examples are illustrative: ids, times, checksums, sizes, counts, model and route names and the max_tokens value are made up and are not proposed values, except the pins (the Hermes tag and commit, the EnzymeML commit and the checksum of its schema) and the size and checksum of the stored T9HQ4X file, which are the real values (register, section 3).",
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The entry's position in its file, counted from 1, without gaps (Run records 2.3; 2.10, rule 2)."
+    },
+    "entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Written by software, unique within the run (Run records 2.3)."
+    },
+    "run_id": {"$ref": "#/$defs/ariadne_id", "description": "The run (Run records 2.3)."},
+    "record_id": {"$ref": "#/$defs/ariadne_id", "description": "The record (Run records 2.3)."},
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The round, where the entry belongs to a round (Issue format 2)."
+    },
+    "batch_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "In a batch log, the batch, in place of run_id, record_id and round; in run_started of a run of a batch, the batch the run belongs to."
+    },
+    "run_kind": {"$ref": "#/$defs/run_kind"},
+    "kind": {
+      "enum": [
+        "run_started",
+        "input_check",
+        "admission",
+        "state_change",
+        "software_step",
+        "schema_check",
+        "projection",
+        "packet_manifest",
+        "attempt_started",
+        "attempt_ended",
+        "code",
+        "issue_list",
+        "pointer_retarget",
+        "pointer_hold",
+        "not_judged",
+        "unregistered_issue",
+        "question_screen",
+        "answer_received",
+        "working_copy",
+        "human_act",
+        "approval_summary",
+        "approval",
+        "approved_file_check",
+        "approval_voided",
+        "late_output",
+        "suspended",
+        "resumed",
+        "run_ended",
+        "correction",
+        "containment_report",
+        "evaluation_record",
+        "batch_started",
+        "batch_refused",
+        "batch_ended",
+        "fix",
+        "canary_review"
+      ]
+    },
+    "at": {
+      "$ref": "#/$defs/utc_time",
+      "description": "When the entry was written, from the software clock (Run records 2.3)."
+    },
+    "source": {"$ref": "#/$defs/source"},
+    "cause": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/ariadne_id"},
+      "description": "The ids of the entries that led to this one, if any."
+    },
+    "files": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/file_ref"},
+      "description": "File references of the stored files the step read and wrote."
+    }
+  },
+  "required": ["seq", "entry_id", "run_kind", "kind", "at", "source"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {"kind": {"enum": ["batch_started", "batch_refused", "batch_ended", "fix", "canary_review"]}},
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["batch_id"],
+        "properties": {
+          "run_id": false,
+          "record_id": false,
+          "round": false,
+          "run_kind": {"enum": ["evaluation", "measurement"]}
+        }
+      },
+      "else": {"required": ["run_id", "record_id"]}
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "input_check",
+              "admission",
+              "state_change",
+              "software_step",
+              "schema_check",
+              "projection",
+              "packet_manifest",
+              "attempt_started",
+              "attempt_ended",
+              "code",
+              "issue_list",
+              "pointer_retarget",
+              "pointer_hold",
+              "not_judged",
+              "unregistered_issue",
+              "question_screen",
+              "answer_received",
+              "working_copy",
+              "human_act",
+              "approval_summary",
+              "approval",
+              "approved_file_check",
+              "approval_voided",
+              "late_output",
+              "suspended",
+              "resumed",
+              "run_ended",
+              "correction",
+              "containment_report",
+              "evaluation_record"
+            ]
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {"properties": {"batch_id": false}}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "run_started"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_run_started"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "input_check"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_input_check"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "admission"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_admission"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "state_change"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_state_change"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "software_step"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_software_step"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "schema_check"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_schema_check"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "projection"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_projection"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "packet_manifest"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_packet_manifest"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "attempt_started"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_attempt_started"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "attempt_ended"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_attempt_ended"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "code"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_code"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "issue_list"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_issue_list"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "pointer_retarget"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_pointer_retarget"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "pointer_hold"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_pointer_hold"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "not_judged"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_not_judged"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "unregistered_issue"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_unregistered_issue"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "question_screen"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_question_screen"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "answer_received"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_answer_received"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "human_act"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_human_act"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "working_copy"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_working_copy"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "approval_summary"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_approval_summary"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "approval"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_approval"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "approved_file_check"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_approved_file_check"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "approval_voided"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_approval_voided"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "late_output"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_late_output"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "suspended"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_suspended"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "resumed"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_resumed"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "run_ended"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_run_ended"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "correction"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_correction"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "containment_report"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_containment_report"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "evaluation_record"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_evaluation_record"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "batch_started"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_batch_started"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "batch_refused"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_batch_refused"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "batch_ended"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_batch_ended"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "fix"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_fix"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "canary_review"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_canary_review"}
+    }
+  ],
+  "unevaluatedProperties": false,
+  "examples": [
+    {
+      "seq": 1,
+      "entry_id": "E-0001",
+      "batch_id": "BAT-0007",
+      "run_kind": "measurement",
+      "kind": "batch_started",
+      "at": "2026-11-20T09:00:00Z",
+      "source": "workflow_controller",
+      "items": [{"item_list_id": "IL-EXTRACTION-DEV", "version": "1"}],
+      "conditions": ["zero_shot", "few_shot"],
+      "repetitions": 3,
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "sha256": "592aec9bdc247a03789dcc3397e8f9b38b0479b749351f8de1cc1cd52af4dc68"
+      },
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "containment_report": "CR-0004",
+      "canaries": "none"
+    },
+    {
+      "seq": 1,
+      "entry_id": "E-0001",
+      "run_id": "RUN-0101",
+      "record_id": "REC-0101",
+      "run_kind": "measurement",
+      "kind": "run_started",
+      "at": "2026-11-20T09:00:05Z",
+      "source": "workflow_controller",
+      "input_entry": {"list": "input_set_manifest", "id": "T9HQ4X"},
+      "input": {
+        "artifact_id": "AR-0001",
+        "path": "files/AR-0001.xml",
+        "sha256": "021ea7f5a55bab3dfa724cfc4df338f877e0b6c2910cac8539f20b0e6be5b9f6",
+        "bytes": 8137,
+        "media_type": "application/xml"
+      },
+      "download_date": "2026-10-12",
+      "batch_id": "BAT-0007",
+      "item_id": "IT-0003",
+      "condition": "few_shot",
+      "repetition": 1,
+      "pins": {
+        "hermes_tag": "v2026.9.24",
+        "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+        "enzymeml_commit": "bf9321f",
+        "enzymeml_schema_sha256": "1d001e351ac2c0191241f6152cbd4cd4f61fbdb196cdae0672531d209365a227",
+        "ariadne_commit": "af7d6d421fd572efd28531731c2f5507ff960253"
+      },
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "sha256": "592aec9bdc247a03789dcc3397e8f9b38b0479b749351f8de1cc1cd52af4dc68"
+      }
+    },
+    {
+      "seq": 9,
+      "entry_id": "E-0009",
+      "run_id": "RUN-0101",
+      "record_id": "REC-0101",
+      "round": 1,
+      "run_kind": "measurement",
+      "kind": "attempt_started",
+      "at": "2026-11-20T09:01:00Z",
+      "source": "launcher",
+      "environment": "host-a",
+      "cause": ["E-0007", "E-0008"],
+      "attempt_id": "ATT-0001",
+      "agent": "extraction_agent",
+      "part": "whole",
+      "try": "first",
+      "binding": {
+        "artifact_id": "AR-0010",
+        "path": "attempts/ATT-0001/binding.json",
+        "sha256": "8c319ff70d4717ee4a9228f941974b52fc645b04657394b3efc5bf5b0e3dd39c",
+        "bytes": 812,
+        "media_type": "application/json"
+      },
+      "prompt_version": "Extraction prompt, version 1",
+      "prompt_sha256": "739e159be1d7078e8ac6d17897080ebe89eefe83fb7feef44b97daaa8e4f8071",
+      "reference_version": "Extraction reference, version 1",
+      "reference_sha256": "31b8e7c7adb02d6bc24ea51b9518c794d27670a69f8dff0b5a9ca194eea52f68",
+      "example_manifest_id": "EM-X-FEW-DEV-T9HQ4X",
+      "condition": "few_shot",
+      "packet_manifest": "E-0007",
+      "packet_sha256": "136a5470104bcc0cd28aaef117bd0b783158519b810e2d5cee3cadd06e1595de",
+      "packet_sent_sha256": "2dad0c1387a102f545442ba83404fcce2ac7c1866b7fcaaf3181b1b965b97c8b",
+      "config_sha256": "b79606fb3afea5bd1609ed40b622142f1c98125abcfe89a76a661b0e8e343910",
+      "home_template_sha256": "954408b9dd8b794241b8b1b72af876316bc97242b763e748ad86be952472f29f",
+      "hermes_tag": "v2026.9.24",
+      "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+      "image_digest": "sha256:6105d6cc76af400325e94d588ce511be5bfdbb73b437dc51eca43917d7a43e3d",
+      "route_id": "ROUTE-1",
+      "route_version": "1",
+      "model": "example-model-20260101",
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "sha256": "592aec9bdc247a03789dcc3397e8f9b38b0479b749351f8de1cc1cd52af4dc68"
+      },
+      "limits": {
+        "max_tokens": 99999,
+        "max_iterations": 4,
+        "wall_clock_guard": "2026-11-20T10:01:00Z",
+        "wall_clock_minutes": 60,
+        "request_limit": 10
+      },
+      "containment_report": "CR-0004",
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "admission": "E-0008"
+    },
+    {
+      "seq": 10,
+      "entry_id": "E-0010",
+      "run_id": "RUN-0101",
+      "record_id": "REC-0101",
+      "round": 1,
+      "run_kind": "measurement",
+      "kind": "attempt_ended",
+      "at": "2026-11-20T09:07:31Z",
+      "source": "workflow_controller",
+      "cause": ["E-0009"],
+      "attempt_id": "ATT-0001",
+      "result": {
+        "artifact_id": "AR-0011",
+        "path": "files/AR-0011.json",
+        "sha256": "ccef8c1603eebe75440365c216c5136d47e4c6d2150411b6e6127c56d29568bc",
+        "bytes": 30511,
+        "media_type": "application/json"
+      },
+      "container_started_at": "2026-11-20T09:01:02Z",
+      "container_ended_at": "2026-11-20T09:07:29Z",
+      "wall_seconds": 387.4,
+      "status_answered_at": "2026-11-20T09:01:04Z",
+      "exit": {"how": "runner_exit", "exit_status": 0},
+      "outcome": "output",
+      "requests": {
+        "forwarded": 1,
+        "refused": 0,
+        "by_class": {"first": 1, "retry": 0, "continuation": 0, "unclassifiable": 0},
+        "request_log_range": {"first_seq": 1, "last_seq": 3}
+      },
+      "served_model": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+      "usage": {
+        "input_tokens": 1200,
+        "cache_write_tokens": 30000,
+        "cache_read_tokens": 0,
+        "input_total_tokens": 31200,
+        "output_tokens": 5400,
+        "reasoning_tokens": "not_reported"
+      },
+      "usage_unknown": {"categories": {}, "requests": 0},
+      "unknown_tool_calls": 0,
+      "monitors": {"records": 14, "unexplained": 0, "ready_at": "2026-11-20T09:01:01Z", "end_observed": true, "events_lost": {}},
+      "mount_diff": {
+        "artifact_id": "AR-0012",
+        "path": "files/AR-0012.json",
+        "sha256": "ae859305d81f1993976ed957e6207722ee224f978286aca7bb7e6c0895b25296",
+        "bytes": 640,
+        "media_type": "application/json"
+      },
+      "resources": {
+        "containers": [{"container": "attempt", "peak_memory_bytes": 412000000, "cpu_seconds": 21.5, "peak_processes": 9}],
+        "api_calls": 1,
+        "loop_iterations": 1
+      },
+      "raw_output": {
+        "artifact_id": "AR-0013",
+        "path": "files/AR-0013.txt",
+        "sha256": "c894a50a68f9d05779c020c832cec73d597490dc26fff185761e56ecfdd37b7d",
+        "bytes": 28890,
+        "media_type": "text/plain"
+      },
+      "candidate_sha256": "dda18a0e21ae47c53b4309434cbc02ae8bf764fa83a6defbb719431242722aa7",
+      "content_findings": {
+        "artifact_id": "AR-0014",
+        "path": "files/AR-0014.json",
+        "sha256": "ea39bd456d20afa191ce4789e8190d24c70f3c13b287e4c590fb8c4cf3ac66a2",
+        "bytes": 210,
+        "media_type": "application/json"
+      },
+      "step_counts": {"tries_used": 1, "stage_attempts": 1},
+      "home_archive": {
+        "artifact_id": "AR-0015",
+        "path": "attempts/ATT-0001/home.tar.gz",
+        "sha256": "661921aaddd9221548d8c74f2f9e264b18593d1fbf19998c067543ee393f3e55",
+        "bytes": 90210,
+        "media_type": "application/gzip"
+      }
+    },
+    {
+      "seq": 12,
+      "entry_id": "E-0012",
+      "run_id": "RUN-0201",
+      "record_id": "REC-0201",
+      "round": 1,
+      "run_kind": "evaluation",
+      "kind": "code",
+      "at": "2026-12-03T10:15:00Z",
+      "source": "workflow_controller",
+      "cause": ["E-0011"],
+      "code": "cap_hit",
+      "step": "packet preparation, verification agent",
+      "cap_hit": "input_tokens",
+      "details": "The packet fits the route's context length but exceeds the frozen input cap.",
+      "followed_by": {"action": "counted"}
+    },
+    {
+      "seq": 15,
+      "entry_id": "E-0015",
+      "run_id": "RUN-0301",
+      "record_id": "REC-0301",
+      "round": 1,
+      "run_kind": "pipeline",
+      "kind": "attempt_ended",
+      "at": "2026-11-25T14:02:20Z",
+      "source": "workflow_controller",
+      "cause": ["E-0014"],
+      "attempt_id": "ATT-0031",
+      "container_started_at": "2026-11-25T14:02:01Z",
+      "container_ended_at": "2026-11-25T14:02:09Z",
+      "wall_seconds": 8.2,
+      "exit": {"how": "runner_exit", "exit_status": 3},
+      "code": "startup_check_failed",
+      "error_detail": {
+        "artifact_id": "AR-0312",
+        "path": "files/AR-0312.json",
+        "sha256": "17fbd6ac1f786c6e1a3f55129e27a3bfd551da4828ad9b4b4afc5dada7dee089",
+        "bytes": 420,
+        "media_type": "application/json"
+      },
+      "followed_by": {"action": "suspended"},
+      "requests": {"forwarded": 0, "refused": 0, "by_class": {"first": 0, "retry": 0, "continuation": 0, "unclassifiable": 0}},
+      "served_model": {"ids": [], "not_reported": 0, "flagged": false},
+      "usage": {
+        "input_tokens": 0,
+        "cache_write_tokens": 0,
+        "cache_read_tokens": 0,
+        "input_total_tokens": 0,
+        "output_tokens": 0
+      },
+      "usage_unknown": {"categories": {}, "requests": 0},
+      "unknown_tool_calls": 0,
+      "monitors": {"records": 3, "unexplained": 0, "ready_at": "2026-11-25T14:02:00Z", "end_observed": true, "events_lost": {}},
+      "mount_diff": {
+        "artifact_id": "AR-0313",
+        "path": "files/AR-0313.json",
+        "sha256": "3e15b9cc39e621802bba1eb5d540bf07227bcb24999153c16347980607fe511f",
+        "bytes": 120,
+        "media_type": "application/json"
+      },
+      "resources": {
+        "containers": [{"container": "attempt", "peak_memory_bytes": 98000000, "cpu_seconds": 1.2, "peak_processes": 4}],
+        "api_calls": 0
+      },
+      "step_counts": {"tries_used": 0, "stage_attempts": 1},
+      "home_archive": {
+        "artifact_id": "AR-0314",
+        "path": "attempts/ATT-0031/home.tar.gz",
+        "sha256": "0a04ce61099a15e6524c488e3132408162624765f6b8459eef5ff337915936ed",
+        "bytes": 20480,
+        "media_type": "application/gzip"
+      }
+    },
+    {
+      "seq": 1,
+      "entry_id": "E-0001",
+      "run_id": "RUN-0090",
+      "record_id": "REC-0090",
+      "run_kind": "containment",
+      "kind": "run_started",
+      "at": "2026-11-18T10:00:00Z",
+      "source": "workflow_controller",
+      "suite_version": "1",
+      "fixture_store_version": "1",
+      "pins": {
+        "hermes_tag": "v2026.9.24",
+        "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+        "enzymeml_commit": "bf9321f",
+        "enzymeml_schema_sha256": "1d001e351ac2c0191241f6152cbd4cd4f61fbdb196cdae0672531d209365a227",
+        "ariadne_commit": "af7d6d421fd572efd28531731c2f5507ff960253"
+      },
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "sha256": "592aec9bdc247a03789dcc3397e8f9b38b0479b749351f8de1cc1cd52af4dc68"
+      }
+    },
+    {
+      "seq": 31,
+      "entry_id": "E-0031",
+      "run_id": "RUN-0302",
+      "record_id": "REC-0302",
+      "round": 1,
+      "run_kind": "pipeline",
+      "kind": "state_change",
+      "at": "2026-12-09T09:30:00Z",
+      "source": "workflow_controller",
+      "cause": ["E-0030"],
+      "from_state": "awaiting_answers",
+      "to_state": "withdrawn",
+      "row": 38
+    },
+    {
+      "seq": 1,
+      "entry_id": "E-0001",
+      "run_id": "RUN-0091",
+      "record_id": "REC-0091",
+      "run_kind": "containment",
+      "kind": "run_started",
+      "at": "2026-11-18T10:05:00Z",
+      "source": "workflow_controller",
+      "suite_run": "RUN-0090",
+      "test": "CT-19",
+      "agent": "extraction_agent",
+      "pins": {
+        "hermes_tag": "v2026.9.24",
+        "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+        "enzymeml_commit": "bf9321f",
+        "enzymeml_schema_sha256": "1d001e351ac2c0191241f6152cbd4cd4f61fbdb196cdae0672531d209365a227",
+        "ariadne_commit": "af7d6d421fd572efd28531731c2f5507ff960253"
+      },
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "sha256": "592aec9bdc247a03789dcc3397e8f9b38b0479b749351f8de1cc1cd52af4dc68"
+      }
+    },
+    {
+      "seq": 3,
+      "entry_id": "E-0003",
+      "run_id": "RUN-0091",
+      "record_id": "REC-0091",
+      "round": 1,
+      "run_kind": "containment",
+      "kind": "attempt_started",
+      "at": "2026-11-18T10:05:12Z",
+      "source": "launcher",
+      "environment": "host-a",
+      "cause": ["E-0002"],
+      "files": [
+        {
+          "artifact_id": "AR-0921",
+          "path": "files/AR-0921.txt",
+          "sha256": "3cfb398438777c54a465cffa1c73cab1dc83021039092439da6cbc7658f82c8a",
+          "bytes": 11540,
+          "media_type": "text/plain"
+        }
+      ],
+      "attempt_id": "ATT-0501",
+      "agent": "extraction_agent",
+      "part": "whole",
+      "try": "first",
+      "binding": {
+        "artifact_id": "AR-0922",
+        "path": "attempts/ATT-0501/binding.json",
+        "sha256": "fb6421e2396fc9d4f7feec2f0152c86856560fe09b68223d39ad2891578d68ba",
+        "bytes": 790,
+        "media_type": "application/json"
+      },
+      "prompt_version": "Extraction prompt, version 1",
+      "prompt_sha256": "739e159be1d7078e8ac6d17897080ebe89eefe83fb7feef44b97daaa8e4f8071",
+      "reference_version": "Extraction reference, version 1",
+      "example_manifest_id": "EM-X-ZERO-DEV-T9HQ4X",
+      "condition": "zero_shot",
+      "packet_sha256": "196a62fdbfbbe3669af00723724979991cafc1e1d80d7a40524daf455fcbc6cc",
+      "packet_sent_sha256": "196a62fdbfbbe3669af00723724979991cafc1e1d80d7a40524daf455fcbc6cc",
+      "config_sha256": "b79606fb3afea5bd1609ed40b622142f1c98125abcfe89a76a661b0e8e343910",
+      "home_template_sha256": "954408b9dd8b794241b8b1b72af876316bc97242b763e748ad86be952472f29f",
+      "hermes_tag": "v2026.9.24",
+      "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+      "image_digest": "sha256:6105d6cc76af400325e94d588ce511be5bfdbb73b437dc51eca43917d7a43e3d",
+      "route_id": "ROUTE-1",
+      "route_version": "1",
+      "model": "example-model-20260101",
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "sha256": "592aec9bdc247a03789dcc3397e8f9b38b0479b749351f8de1cc1cd52af4dc68"
+      },
+      "limits": {
+        "max_tokens": 99999,
+        "max_iterations": 4,
+        "wall_clock_guard": "2026-11-18T11:05:12Z",
+        "wall_clock_minutes": 60,
+        "request_limit": 10
+      },
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "admission": "E-0002"
+    },
+    {
+      "seq": 24,
+      "entry_id": "E-0024",
+      "run_id": "RUN-0303",
+      "record_id": "REC-0303",
+      "round": 2,
+      "run_kind": "pipeline",
+      "kind": "software_step",
+      "at": "2026-12-11T09:42:05Z",
+      "source": "answer_application",
+      "cause": ["E-0023"],
+      "files": [
+        {
+          "artifact_id": "AR-0071",
+          "path": "files/AR-0071.json",
+          "sha256": "8002aa0327434414326a24df0a27f1fbebd83cc31c53453853c47fbabd5ee051",
+          "bytes": 1480,
+          "media_type": "application/json"
+        },
+        {
+          "artifact_id": "AR-0072",
+          "path": "files/AR-0072.json",
+          "sha256": "8070985e1d22b63c80f54c13f35c848214badca5cf13f418edbc97fd5da8ecee",
+          "bytes": 52100,
+          "media_type": "application/json"
+        },
+        {
+          "artifact_id": "AR-0073",
+          "path": "files/AR-0073.json",
+          "sha256": "fba6b27f8b5b4c41b71f07a14ebb34cf70f5b8e5938269c328135625b04d49e3",
+          "bytes": 52980,
+          "media_type": "application/json"
+        }
+      ],
+      "step": "answer_application",
+      "software_version": "0.1",
+      "inputs": ["AR-0071", "AR-0072"],
+      "outputs": ["AR-0073"],
+      "result": "passed",
+      "started_at": "2026-12-11T09:42:03Z",
+      "ended_at": "2026-12-11T09:42:05Z",
+      "withheld_items": [
+        {"question_id": "Q-004", "issue_ids": ["ISS-007"]},
+        {"question_id": "Q-005", "issue_ids": ["ISS-007"]}
+      ]
+    },
+    {
+      "seq": 11,
+      "entry_id": "E-0011",
+      "run_id": "RUN-0401",
+      "record_id": "REC-0401",
+      "round": 1,
+      "run_kind": "evaluation",
+      "kind": "attempt_ended",
+      "at": "2026-12-10T11:07:31Z",
+      "source": "workflow_controller",
+      "cause": ["E-0010"],
+      "attempt_id": "ATT-0101",
+      "result": {
+        "artifact_id": "AR-0411",
+        "path": "files/AR-0411.json",
+        "sha256": "cef7605325ee444be03d31405093aee74445141d25afaeedf006be016d192ed5",
+        "bytes": 31020,
+        "media_type": "application/json"
+      },
+      "container_started_at": "2026-12-10T11:01:02Z",
+      "container_ended_at": "2026-12-10T11:07:29Z",
+      "wall_seconds": 387.4,
+      "status_answered_at": "2026-12-10T11:01:04Z",
+      "exit": {"how": "runner_exit", "exit_status": 0},
+      "outcome": "output",
+      "input_above_cap": true,
+      "requests": {
+        "forwarded": 1,
+        "refused": 0,
+        "by_class": {"first": 1, "retry": 0, "continuation": 0, "unclassifiable": 0},
+        "request_log_range": {"first_seq": 1, "last_seq": 3}
+      },
+      "served_model": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+      "usage": {
+        "input_tokens": 1200,
+        "cache_write_tokens": 31950,
+        "cache_read_tokens": 0,
+        "input_total_tokens": 33150,
+        "output_tokens": 5400,
+        "reasoning_tokens": "not_reported"
+      },
+      "usage_unknown": {"categories": {}, "requests": 0},
+      "unknown_tool_calls": 0,
+      "monitors": {"records": 14, "unexplained": 0, "ready_at": "2026-12-10T11:01:01Z", "end_observed": true, "events_lost": {}},
+      "mount_diff": {
+        "artifact_id": "AR-0412",
+        "path": "files/AR-0412.json",
+        "sha256": "b492cea30cc36f747d0345c14bac7d747d6c507200090b8b1eda7eb55bf20825",
+        "bytes": 640,
+        "media_type": "application/json"
+      },
+      "resources": {
+        "containers": [{"container": "attempt", "peak_memory_bytes": 412000000, "cpu_seconds": 21.5, "peak_processes": 9}],
+        "api_calls": 1,
+        "loop_iterations": 1
+      },
+      "raw_output": {
+        "artifact_id": "AR-0413",
+        "path": "files/AR-0413.txt",
+        "sha256": "b6f3ba039ea11059917db8246adace8954d6eb7d72033d9a45741acada850451",
+        "bytes": 28890,
+        "media_type": "text/plain"
+      },
+      "candidate_sha256": "9f78e8c794989a970fcdd4f7d447b2c8d2ed9d58f15c0efda3c52ee21d19b574",
+      "content_findings": {
+        "artifact_id": "AR-0414",
+        "path": "files/AR-0414.json",
+        "sha256": "0fe6f0159f6ef4e0cab872edfd6a3dd2ebcd945ac1e1b921ef7e106fb5cde505",
+        "bytes": 210,
+        "media_type": "application/json"
+      },
+      "step_counts": {"tries_used": 1, "stage_attempts": 1},
+      "home_archive": {
+        "artifact_id": "AR-0415",
+        "path": "attempts/ATT-0101/home.tar.gz",
+        "sha256": "aefcaaa767cabdca9fee32c5f69d9d01a4f1f2198b753cd4732d45018216eace",
+        "bytes": 90210,
+        "media_type": "application/gzip"
+      }
+    },
+    {
+      "seq": 9,
+      "entry_id": "E-0009",
+      "run_id": "RUN-0304",
+      "record_id": "REC-0304",
+      "round": 1,
+      "run_kind": "pipeline",
+      "kind": "code",
+      "at": "2026-12-12T09:15:12Z",
+      "source": "launcher",
+      "cause": ["E-0008"],
+      "files": [
+        {
+          "artifact_id": "AR-0321",
+          "path": "attempts/ATT-0032/binding.json",
+          "sha256": "3d29580d87fbb7d011d5ffe7e0091d2b717b680063dd00dc8f6a2aedef3607e4",
+          "bytes": 806,
+          "media_type": "application/json"
+        }
+      ],
+      "code": "home_not_empty",
+      "step": "launcher, step 2, extraction agent",
+      "details": "The target home folder was not empty. The launcher wrote no token and started no container.",
+      "files_found": ["shell-hook-approvals.json"],
+      "followed_by": {"action": "suspended"}
+    },
+    {
+      "seq": 20,
+      "entry_id": "E-0020",
+      "run_id": "RUN-0305",
+      "record_id": "REC-0305",
+      "round": 1,
+      "run_kind": "pipeline",
+      "kind": "human_act",
+      "at": "2026-12-14T10:05:00Z",
+      "source": "workflow_controller",
+      "files": [
+        {
+          "artifact_id": "AR-0340",
+          "path": "files/AR-0340.json",
+          "sha256": "6f1d0c3a9b2e47d58a1c0e9f3b7d2a64c8e5f1a0b9d3c7e2f4a6b8d0c1e3f5a7",
+          "bytes": 2140,
+          "media_type": "application/json"
+        }
+      ],
+      "action_id": "HA-001",
+      "action": "structural_edit",
+      "by": "A. Scientist",
+      "acted_at": "2026-12-14T10:04:30Z",
+      "base": {
+        "artifact_id": "AR-0339",
+        "path": "files/AR-0339.json",
+        "sha256": "0b7d3e1f9a2c45d68b1e0f9c3a7d2b64e8c5f1a0b9d3c7e2f4a6b8d0c1e3f5a9",
+        "bytes": 18320,
+        "media_type": "application/json"
+      },
+      "result": "applied",
+      "version": 1,
+      "issues": ["ISS-003"],
+      "split_ids": ["m0"],
+      "basis": {
+        "source": [
+          {
+            "xpath": "/experiment/methodology",
+            "quote": "The assay was run twice, at pH 7.0 and at pH 8.0."
+          }
+        ]
+      }
+    },
+    {
+      "seq": 22,
+      "entry_id": "E-0022",
+      "run_id": "RUN-0305",
+      "record_id": "REC-0305",
+      "round": 1,
+      "run_kind": "pipeline",
+      "kind": "pointer_retarget",
+      "at": "2026-12-14T10:05:01Z",
+      "source": "workflow_controller",
+      "cause": ["E-0020"],
+      "owner": "issue",
+      "issue_id": "ISS-005",
+      "pointer_before": "/measurements/1/ph",
+      "pointer_after": "/measurements/2/ph",
+      "object_id": "m1",
+      "reason": "id_moved"
+    },
+    {
+      "seq": 23,
+      "entry_id": "E-0023",
+      "run_id": "RUN-0305",
+      "record_id": "REC-0305",
+      "round": 1,
+      "run_kind": "pipeline",
+      "kind": "pointer_hold",
+      "at": "2026-12-14T10:05:01Z",
+      "source": "workflow_controller",
+      "cause": ["E-0020"],
+      "owner": "issue",
+      "issue_id": "ISS-004",
+      "pointer_before": "/measurements/0/temperature",
+      "object_id": "m0",
+      "reason": "split_or_merged",
+      "status_before": "open"
+    }
+  ],
+  "$defs": {
+    "agent": {
+      "enum": ["extraction_agent", "verification_agent", "inquiry_agent"],
+      "description": "The agent (Handoffs 2.13)."
+    },
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "basis": {
+      "type": "object",
+      "description": "The basis of a structural edit as its action file records it (Run records 2.3, human_act; Issue format 6.2; Handoffs 2.11, which owns the shape): source, the locators that clearly state the change, and statement, the explicit human statement; at least one of the two. A person's explanation is a statement, never a source; the action's optional note is neither. Whether a source is clear enough to stand without a statement is the named person's judgment; whether each locator selects one node and quotes it needs the input and is a software check.",
+      "properties": {
+        "source": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/locator"},
+          "description": "The locators in the input that clearly state the change."
+        },
+        "statement": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {"question_id": {"$ref": "#/$defs/question_id"}},
+              "required": ["question_id"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {"text": {"type": "string", "minLength": 1}},
+              "required": ["text"],
+              "additionalProperties": false
+            }
+          ],
+          "description": "The explicit human statement, in the shape of Handoffs 2.11: {question_id} for an answer's note, a 'The question does not fit' note or a named rate model, which the answer file already holds; or {text} for a statement entered for the edit, as the action file holds it, stored unchanged. The action file itself is named in files."
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "batch_end": {
+      "type": "object",
+      "description": "How a batch ended (Run records 2.3, batch_ended; Evaluation interfaces 10.1, end, and 10.4).",
+      "properties": {
+        "result": {"enum": ["completed", "stopped"], "description": "Proposed name."},
+        "stopped_by": {"$ref": "#/$defs/stop_cause", "description": "Proposed name."},
+        "stopped_in_run": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The run where the stop happened."},
+        "runs_not_completed": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/ariadne_id"},
+          "description": "Proposed name. The ids of the runs that were not completed; empty for a completed batch."
+        }
+      },
+      "required": ["result", "runs_not_completed"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"const": "stopped"}}, "required": ["result"]},
+          "then": {"required": ["stopped_by", "stopped_in_run"]}
+        },
+        {
+          "if": {"properties": {"result": {"const": "completed"}}, "required": ["result"]},
+          "then": {
+            "properties": {"stopped_by": false, "stopped_in_run": false, "runs_not_completed": {"maxItems": 0}}
+          }
+        }
+      ]
+    },
+    "block": {
+      "type": "object",
+      "description": "One block of the packet with its size and checksum (Handoffs 2.4, Packet manifest).",
+      "properties": {
+        "block": {
+          "enum": [
+            "HEADER",
+            "REFERENCE",
+            "EXAMPLES",
+            "INPUT",
+            "LINK NAMES",
+            "DRAFT",
+            "ISSUES",
+            "EARLIER",
+            "TECHNICAL NOTE"
+          ],
+          "description": "Proposed name. The block name (Roles 7.2)."
+        },
+        "bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. The block's size in bytes."},
+        "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name."}
+      },
+      "required": ["block", "bytes", "sha256"],
+      "additionalProperties": false
+    },
+    "budget_profile_ref": {
+      "type": "object",
+      "description": "The budget profile: its name, its version and the checksum of its file (Run records 2.3, 2.4 and 4.1).",
+      "properties": {
+        "name": {
+          "enum": ["development", "evaluation"],
+          "description": "Proposed name and values. The development profile or the evaluation profile (Run records 4.1)."
+        },
+        "version": {"type": "string", "minLength": 1, "description": "Proposed name. The profile's version."},
+        "sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The checksum of the profile's file (Run records 2.9, row Budget profile file)."
+        }
+      },
+      "required": ["name", "version", "sha256"],
+      "additionalProperties": false
+    },
+    "canaries": {
+      "anyOf": [
+        {"const": "none"},
+        {
+          "type": "object",
+          "properties": {
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"enum": ["CS1", "CS2", "CS3", "CS4", "CS5", "CS6", "CS7"]},
+              "description": "Proposed name. The adopted options of Evaluation interfaces 5.3."
+            },
+            "canary_list_sha256": {
+              "$ref": "#/$defs/checksum",
+              "description": "Proposed name. The checksum of the canary list loaded."
+            }
+          },
+          "required": ["options", "canary_list_sha256"],
+          "additionalProperties": false
+        }
+      ],
+      "description": "none, or the adopted canary options and the checksum of the canary list loaded (Evaluation interfaces 5.3 and 10.1)."
+    },
+    "check_result": {
+      "type": "object",
+      "description": "The result of a check that stopped a run or batch where no code applies (Run records 2.3; Evaluation interfaces 10.2, run_end).",
+      "properties": {
+        "entry": {
+          "enum": ["input_check", "schema_check"],
+          "description": "Proposed name. The run-log entry that carries the result (Run records 2.3)."
+        },
+        "result": {"enum": ["checksum_mismatch", "wrong_folder"], "description": "Proposed name."}
+      },
+      "required": ["entry", "result"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"entry": {"const": "schema_check"}}, "required": ["entry"]},
+          "then": {"properties": {"result": {"const": "checksum_mismatch"}}}
+        }
+      ]
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "closed_by": {
+      "anyOf": [{"$ref": "#/$defs/question_id"}, {"enum": ["recheck", "override", "structural_edit"]}],
+      "description": "Written by software. A question id, recheck, override or structural_edit (Issue format 4)."
+    },
+    "code": {
+      "enum": [
+        "unknown_tool",
+        "not_admitted",
+        "packet_too_large",
+        "packet_check_failed",
+        "startup_check_failed",
+        "not_json",
+        "not_in_format",
+        "truncated",
+        "crashed",
+        "failure_form",
+        "route_refused",
+        "containment_hit",
+        "canary_hit",
+        "runaway_guard",
+        "home_not_empty",
+        "xml_refused",
+        "cap_hit",
+        "monitor_incomplete"
+      ],
+      "description": "A run-log code: the Stage 1 codes of Roles 8.7, home_not_empty, xml_refused, cap_hit and monitor_incomplete included, and of Handoffs 2.13. How the run log records those four is in Run records 2.8."
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$(?![\\s\\S])",
+      "description": "A git commit, abbreviated or full, in lowercase hexadecimal."
+    },
+    "compared_with": {
+      "enum": [
+        "input_set_manifest",
+        "variant_list",
+        "item_list",
+        "example_manifest",
+        "run_log",
+        "run_started",
+        "resumed",
+        "fixture_store"
+      ],
+      "description": "Proposed values. What a checksum was compared with (Run records 2.3, input_check): the input-set manifest, the variant list, the item list or the example manifest; run_log for a stored file, against the file reference that the run log recorded when it was stored: an earlier output of a mode B run, a round snapshot, an answer file or an answer original (Run records 2.9); run_started or resumed for the budget profile file; fixture_store for a fixture input (Containment 12.4)."
+    },
+    "condition": {"enum": ["zero_shot", "few_shot"], "description": "The condition (Evaluation interfaces 1.2 and 3.3)."},
+    "counters": {
+      "type": "object",
+      "description": "The counters of Run records 4.7, kept across resumes, re-runs and new rounds and never reset, with the totals of section 4.3.",
+      "properties": {
+        "rounds": {"type": "integer", "minimum": 0, "description": "Proposed name."},
+        "attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. Agent attempts, void attempts and re-runs included."
+        },
+        "technical_reruns": {"type": "integer", "minimum": 0, "description": "Proposed name."},
+        "requests": {"$ref": "#/$defs/requests_summary"},
+        "refused_tool_calls": {"type": "integer", "minimum": 0, "description": "Proposed name."},
+        "usage": {"$ref": "#/$defs/usage_totals"},
+        "usage_unknown": {"$ref": "#/$defs/usage_unknown_summary"}
+      },
+      "required": ["rounds", "attempts", "technical_reruns", "requests", "refused_tool_calls", "usage", "usage_unknown"],
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/usage_flags"}]
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])",
+      "description": "A date, YYYY-MM-DD."
+    },
+    "evaluation_packet_part": {
+      "description": "The fields that Evaluation interfaces 3.6 adds for a packet of an evaluation or measurement batch.",
+      "type": "object",
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1, "description": "The item (Evaluation interfaces 3.4)."},
+        "condition": {"$ref": "#/$defs/condition"},
+        "repetition": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The repetition's number (Evaluation interfaces 10.2)."
+        },
+        "placed_files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/placed_file"},
+          "description": "Every file placed in the packet, one row each (Evaluation interfaces 3.6)."
+        },
+        "issue_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/issue_id"},
+          "description": "The issue ids placed in the ISSUES block, in order; for the inquiry agent, the askable ids that the report filter kept (Evaluation interfaces 3.5 and 3.6)."
+        }
+      },
+      "required": ["item_id", "condition", "repetition", "placed_files"],
+      "allOf": [
+        {
+          "if": {"properties": {"agent": {"enum": ["verification_agent", "inquiry_agent"]}}, "required": ["agent"]},
+          "then": {"required": ["issue_ids"]}
+        },
+        {
+          "if": {"properties": {"agent": {"const": "extraction_agent"}}, "required": ["agent"]},
+          "then": {"properties": {"issue_ids": false}}
+        }
+      ]
+    },
+    "evaluation_plan_ref": {
+      "type": "object",
+      "description": "The evaluation-plan version that a held-out assessment references (Evaluation interfaces 4.8 and 7.1, rule 9): its plan_version and the file reference of the stored plan file, with its checksum. Fixed when the batch starts; a later plan version never changes it.",
+      "properties": {
+        "plan_version": {"type": "string", "minLength": 1, "description": "The plan's version, as the plan file holds it (Evaluation interfaces 4.8)."},
+        "plan": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The stored plan file."}
+      },
+      "required": ["plan_version", "plan"],
+      "additionalProperties": false
+    },
+    "failure_class": {
+      "enum": [
+        "not_json",
+        "not_in_format",
+        "truncated",
+        "crashed",
+        "failure_form",
+        "route_refused",
+        "canary_hit",
+        "startup_check_failed",
+        "containment_hit",
+        "monitor_incomplete"
+      ],
+      "description": "For outcome technical_failure, its class (Handoffs 2.13); for outcome void, the code that made it void (Handoffs 2.13; Runtime 13.2, row 1)."
+    },
+    "file_ref": {
+      "type": "object",
+      "description": "A file reference (Run records 1.2): how a run-log entry names a stored file, by its artifact id, its place in the run or batch folder, its checksum, its size in bytes and its media type. File references exist in the run log only, never in a record file, handoff or packet.",
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The file's artifact id (Handoffs 2.1)."},
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/]",
+          "description": "Proposed name. The file's place in the run or batch folder (Run records 2.2), relative to that folder."
+        },
+        "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The file's checksum (Run records 2.9)."},
+        "bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. The file's size in bytes."},
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(\\s*;.*)?$",
+          "description": "Proposed name. The file's media type, for example application/json."
+        }
+      },
+      "required": ["artifact_id", "path", "sha256", "bytes", "media_type"],
+      "additionalProperties": false
+    },
+    "followed_by": {
+      "type": "object",
+      "description": "What followed a technical failure or a void attempt (Run records 2.4, followed_by).",
+      "properties": {
+        "action": {
+          "enum": ["rerun", "suspended", "counted", "stopped"],
+          "description": "Proposed name. rerun (the one technical re-run, D14 A); in a pipeline run or a behaviour-variant run, suspended; in a run of an evaluation or measurement batch, counted (the run counts the failure and the batch goes on) or stopped (the batch stops), as Evaluation interfaces 10.4 sets out for each case; in a test run of a containment suite run (Containment 2.6), the value that the attempt would get in the run kind the test stands for, recorded as the test's evidence: suspended for a pipeline-shaped test, and the values of a run of a batch for the evaluation-shaped runs of ES-01 to ES-03; the suite run goes on, and a suite run itself holds no attempt."
+        },
+        "attempt_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. For rerun, the new attempt's id."}
+      },
+      "required": ["action"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"action": {"const": "rerun"}}, "required": ["action"]},
+          "then": {"required": ["attempt_id"]}
+        },
+        {
+          "if": {"properties": {"action": {"enum": ["suspended", "counted", "stopped"]}}, "required": ["action"]},
+          "then": {"properties": {"attempt_id": false}}
+        }
+      ]
+    },
+    "input_entry": {
+      "type": "object",
+      "description": "The input entry (Run records 2.3, run_started; Handoffs 2.4).",
+      "properties": {
+        "list": {
+          "enum": ["input_set_manifest", "variant_list", "fixture_store"],
+          "description": "Proposed name. Where the input is listed: the input-set manifest, the variant list, or, for a fixture of a suite run or a behaviour-variant run, the fixture store."
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. The entry id, variant id or fixture-store entry."
+        }
+      },
+      "required": ["list", "id"],
+      "additionalProperties": false
+    },
+    "issue_id": {
+      "type": "string",
+      "pattern": "^ISS-[0-9]{3,}$(?![\\s\\S])",
+      "description": "An issue id: ISS-001 and so on (Issue format 4). Written by software, never by an agent."
+    },
+    "item_lists": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_list_id": {"type": "string", "minLength": 1, "description": "The item list's id."},
+          "version": {"type": "string", "minLength": 1, "description": "Proposed name. The item list's version."}
+        },
+        "required": ["item_list_id", "version"],
+        "additionalProperties": false
+      },
+      "description": "The item lists of the batch, with their ids and versions (Run records 2.3; Evaluation interfaces 10.1, items)."
+    },
+    "kind_admission": {
+      "description": "admission (Run records 2.3): before every agent attempt, at intake and at every resume (Containment 12.4).",
+      "properties": {
+        "result": {
+          "enum": ["admitted", "not_admitted"],
+          "description": "not_admitted is the code of a failed admission; the code entry that follows carries followed_by (Run records 2.4)."
+        },
+        "runtime_manifest_sha256": {"$ref": "#/$defs/checksum", "description": "The runtime-manifest checksum computed."},
+        "containment_report": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "The report id it matched. Where no report is bound to the recomputed manifest but the most recent report line of the index, of any manifest, is VERIFIED: that report's id, with report_status STALE (Containment 12.4; AD-03). Absent only when the index holds no report line at all, and for an attempt of a containment run, which the entry's run_kind labels."
+        },
+        "report_status": {
+          "enum": ["VERIFIED", "FAILED", "STALE"],
+          "description": "Proposed name. That report's status; STALE for a report that no longer matches (Run records 2.7; Containment 12.1)."
+        },
+        "monitoring_deadlines": {
+          "enum": ["provisional", "calibrated"],
+          "description": "Proposed name and values. For an admitted attempt: the status of the isolation profile's monitoring deadlines it was admitted under, provisional ('not calibrated') while either deadline is provisional; provisional deadlines admit only the runs that Containment 12.4 names (Run records 2.3)."
+        }
+      },
+      "required": ["result", "runtime_manifest_sha256"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {"result": {"const": "admitted"}, "run_kind": {"not": {"const": "containment"}}},
+            "required": ["result", "run_kind"]
+          },
+          "then": {
+            "required": ["containment_report", "report_status"],
+            "properties": {"report_status": {"const": "VERIFIED"}}
+          }
+        },
+        {"if": {"required": ["containment_report"]}, "then": {"required": ["report_status"]}},
+        {"if": {"properties": {"result": {"const": "admitted"}}, "required": ["result"]}, "then": {"required": ["monitoring_deadlines"]}}
+      ],
+      "type": "object"
+    },
+    "kind_answer_received": {
+      "description": "answer_received (Run records 2.3): an answer file arrives (Workflow 4.2, step 1).",
+      "properties": {
+        "answer_file": {"$ref": "#/$defs/file_ref", "description": "Proposed name."},
+        "original": {
+          "$ref": "#/$defs/file_ref",
+          "description": "For assisted entry only (origin with entered_by): the author's original message as received, stored unchanged, whose artifact id the answer holds as original_ref (Run records 2.1 and 2.3; Issue format 5.2 and 6.3). An answer that its author enters through software is its own original."
+        },
+        "origin": {"$ref": "#/$defs/origin", "description": "Proposed name."},
+        "answer_check": {
+          "type": "object",
+          "description": "Proposed name. The result of the answer check.",
+          "properties": {
+            "result": {
+              "enum": ["passed", "returned"],
+              "description": "Proposed values. returned: the file goes back, with the reason, to the person who entered it (Handoffs 2.2)."
+            },
+            "reason": {"type": "string", "minLength": 1, "description": "Proposed name."}
+          },
+          "required": ["result"],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {"properties": {"result": {"const": "returned"}}, "required": ["result"]},
+              "then": {"required": ["reason"]}
+            }
+          ]
+        },
+        "replaces": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Proposed name. The earlier answer it replaces, if any."
+        }
+      },
+      "required": ["answer_file", "origin", "answer_check"],
+      "allOf": [
+        {
+          "if": {"properties": {"origin": {"required": ["entered_by"]}}, "required": ["origin"]},
+          "then": {"required": ["original"]},
+          "else": {"properties": {"original": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_approval_summary": {
+      "description": "approval_summary (Run records 2.3): the workflow controller stores the approval summary of a final check, once and read-only, when the record becomes approval ready (Workflow 4.3, step 5; Handoffs 2.12); the entry's round is the round of that final check. The summary is a human-readable file, a view of the record and its evidence, never a source of a value, and it has no derived schema; storing it records what was shown, not that it was read (decided on 2026-10-28).",
+      "properties": {
+        "summary": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The stored summary, with its checksum (Run records 2.9, row Approval summary)."}
+      },
+      "required": ["summary", "round"],
+      "type": "object"
+    },
+    "kind_approval": {
+      "description": "approval (Run records 2.3): an approval statement is stored (Workflow 4.3, step 6).",
+      "properties": {
+        "statement": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The approval statement as entered."},
+        "summary": {
+          "$ref": "#/$defs/file_ref",
+          "description": "The stored approval summary that the statement names as approval_summary (Run records 2.3; Handoffs 2.12): shown to the scientist or, after assisted entry, supplied to the scientist. The approval refers to that summary and to the final files it describes; a statement that names another summary than the current one of the final check is refused as stale."
+        },
+        "original": {
+          "$ref": "#/$defs/file_ref",
+          "description": "For assisted entry only (origin with entered_by): the scientist's approval as received, stored unchanged, whose artifact id the statement and the approval entry hold as original_ref (Run records 2.1 and 2.3; Issue format 6.3 and 7.2). Entering an approval confers no approval authority."
+        },
+        "origin": {"$ref": "#/$defs/origin", "description": "Proposed name."},
+        "condition_check": {
+          "type": "object",
+          "description": "Proposed name. The result of the condition check (Issue format 7.2).",
+          "properties": {
+            "result": {"enum": ["passed", "failed"]},
+            "details": {"type": "string", "minLength": 1, "description": "Proposed name."}
+          },
+          "required": ["result"],
+          "additionalProperties": false
+        },
+        "approval_entry_written": {"type": "boolean", "description": "Proposed name. Whether the approval entry was written."},
+        "approved_files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/file_ref"},
+          "description": "Proposed name. The approved files with their checksums."
+        }
+      },
+      "required": ["statement", "origin", "condition_check", "approval_entry_written"],
+      "allOf": [
+        {
+          "if": {"properties": {"origin": {"required": ["entered_by"]}}, "required": ["origin"]},
+          "then": {"required": ["original"]},
+          "else": {"properties": {"original": false}}
+        },
+        {
+          "if": {"properties": {"approval_entry_written": {"const": true}}, "required": ["approval_entry_written"]},
+          "then": {
+            "required": ["approved_files", "summary"],
+            "properties": {"condition_check": {"properties": {"result": {"const": "passed"}}}}
+          }
+        },
+        {
+          "if": {"properties": {"approval_entry_written": {"const": false}}, "required": ["approval_entry_written"]},
+          "then": {"properties": {"approved_files": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_approval_voided": {
+      "description": "approval_voided (Run records 2.3): a later change or a checksum mismatch voids an approval.",
+      "properties": {
+        "approval_entry": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Proposed name. The approval entry as it stood before it was removed (Handoffs 2.12)."
+        },
+        "reason": {
+          "enum": ["later_change", "checksum_mismatch"],
+          "description": "Proposed name and values (Workflow 3.1, rows 33 and 34)."
+        }
+      },
+      "required": ["approval_entry", "reason"],
+      "type": "object"
+    },
+    "kind_approved_file_check": {
+      "description": "approved_file_check (Run records 2.3): before any use of an approved record, and at every resume.",
+      "properties": {
+        "result": {"enum": ["match", "mismatch"]},
+        "differing_files": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/ariadne_id"},
+          "description": "Proposed name. For a mismatch, the files that differ, by artifact id."
+        }
+      },
+      "required": ["result"],
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"const": "mismatch"}}, "required": ["result"]},
+          "then": {"required": ["differing_files"]}
+        },
+        {
+          "if": {"properties": {"result": {"const": "match"}}, "required": ["result"]},
+          "then": {"properties": {"differing_files": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_attempt_ended": {
+      "description": "attempt_ended (Run records 2.4): after an attempt's container has ended and the attempt is classified. Written for every attempt whose container started.",
+      "properties": {
+        "attempt_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "The attempt, repeated from its attempt_started entry (Run records 2.4)."
+        },
+        "result": {
+          "$ref": "#/$defs/file_ref",
+          "description": "File reference of the attempt result, the workflow controller's stored file of Handoffs 2.13, which wraps the facts of the runner's result.json; absent when no request was forwarded (Run records 2.4)."
+        },
+        "container_started_at": {"$ref": "#/$defs/utc_time", "description": "Container start, by the launcher's clock."},
+        "container_ended_at": {"$ref": "#/$defs/utc_time", "description": "Container end, by the launcher's clock."},
+        "wall_seconds": {"type": "number", "minimum": 0, "description": "The duration from a monotonic clock."},
+        "status_answered_at": {
+          "$ref": "#/$defs/utc_time",
+          "description": "When the gateway answered the runner's status request, copied from the answered_at of the attempt's status entry in the request log (Run records 2.4 and 2.5; Runtime 5.4, item 8); absent when it did not."
+        },
+        "exit": {
+          "type": "object",
+          "description": "How the container ended (Run records 2.4, exit).",
+          "properties": {
+            "how": {
+              "enum": ["runner_exit", "wall_clock_guard", "gateway_refusal", "container_limit", "monitor_stop"],
+              "description": "Proposed name and values: the runner's exit status, a stop at the wall-clock guard, a stop after a gateway refusal, a container limit (D18 A, D20 A), or a stop after the monitor collector reported that a monitor failed or lost events, or after the workflow controller found that the collector failed (monitor_stop, a value accepted on 2026-10-28; Run records 2.4; Runtime 10.3, steps 3 and 7; AD-D06)."
+            },
+            "exit_status": {"type": "integer", "description": "Proposed name. For runner_exit: the runner's exit status."},
+            "container_limit": {
+              "enum": ["processor", "memory", "processes"],
+              "description": "Proposed name. For container_limit: the limit (D20 A)."
+            }
+          },
+          "required": ["how"],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {"properties": {"how": {"const": "runner_exit"}}, "required": ["how"]},
+              "then": {"required": ["exit_status"], "properties": {"container_limit": false}}
+            },
+            {
+              "if": {"properties": {"how": {"const": "container_limit"}}, "required": ["how"]},
+              "then": {"required": ["container_limit"], "properties": {"exit_status": false}}
+            },
+            {
+              "if": {"properties": {"how": {"enum": ["wall_clock_guard", "gateway_refusal", "monitor_stop"]}}, "required": ["how"]},
+              "then": {"properties": {"exit_status": false, "container_limit": false}}
+            }
+          ]
+        },
+        "technical_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "As in Handoffs 2.13; never text from the failed output."
+        },
+        "error_detail": {"$ref": "#/$defs/file_ref", "description": "The error detail, never placed in a packet."},
+        "followed_by": {
+          "$ref": "#/$defs/followed_by",
+          "description": "What followed a technical failure or a void attempt (Run records 2.4). Never rerun for an attempt with no forwarded request, which has no attempt result and uses no try (Handoffs 2.13; Workflow 4.4.2, clarification 4; Runtime 13.2)."
+        },
+        "monitors": {
+          "type": "object",
+          "description": "The number of monitor records and how many of them are unexplained (Run records 2.6); and the monitoring evidence of AD-D06 (Run records 2.4, monitors). An empty monitor log alone never counts as complete evidence.",
+          "properties": {
+            "records": {"type": "integer", "minimum": 0, "description": "Proposed name."},
+            "unexplained": {"type": "integer", "minimum": 0},
+            "ready_at": {
+              "$ref": "#/$defs/utc_time",
+              "description": "Proposed name. When the monitor collector confirmed M1 to M3 ready for the attempt, before container_started_at (Runtime 10.3, step 3)."
+            },
+            "end_observed": {
+              "type": "boolean",
+              "description": "Proposed name. True only when every monitor confirmed observation through the container's end (Runtime 10.3, step 8)."
+            },
+            "events_lost": {
+              "type": "object",
+              "description": "Proposed name. The events each monitor reported lost; a monitor that reported none is absent.",
+              "properties": {
+                "M1": {"type": "integer", "minimum": 1},
+                "M2": {"type": "integer", "minimum": 1},
+                "M3": {"type": "integer", "minimum": 1}
+              },
+              "additionalProperties": false
+            },
+            "failed": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"enum": ["M1", "M2", "M3", "collector"]},
+              "description": "Proposed name. The monitors, or the collector, that failed during the attempt; absent or empty when none did."
+            }
+          },
+          "required": ["records", "unexplained", "ready_at", "end_observed", "events_lost"],
+          "additionalProperties": false
+        },
+        "mount_diff": {
+          "$ref": "#/$defs/file_ref",
+          "description": "The difference of the writable mounts before and after the attempt."
+        },
+        "resources": {
+          "type": "object",
+          "description": "Diagnostics only; the request log stays the usage record (Run records 2.4, resources).",
+          "properties": {
+            "containers": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "container": {"type": "string", "minLength": 1, "description": "Proposed name. Which container."},
+                  "peak_memory_bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. Peak memory."},
+                  "cpu_seconds": {"type": "number", "minimum": 0, "description": "Proposed name. Processor seconds."},
+                  "peak_processes": {"type": "integer", "minimum": 0, "description": "Proposed name. Peak number of processes."}
+                },
+                "required": ["container", "peak_memory_bytes", "cpu_seconds", "peak_processes"],
+                "additionalProperties": false
+              },
+              "description": "Proposed name. Per container, as the container engine reports them."
+            },
+            "api_calls": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Hermes's own count of model calls; a diagnostic."
+            },
+            "loop_iterations": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Proposed name. Hermes's loop iterations, where its result reports them; a diagnostic."
+            }
+          },
+          "required": ["containers"],
+          "additionalProperties": false
+        },
+        "raw_output": {
+          "$ref": "#/$defs/file_ref",
+          "description": "The raw model response, failures included; its sha256 is raw_output_sha256 where another record copies it."
+        },
+        "candidate_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the candidate output that went to the format check, if there was one."
+        },
+        "content_findings": {"$ref": "#/$defs/file_ref", "description": "The content-check findings (Handoffs 2.2)."},
+        "step_counts": {
+          "type": "object",
+          "description": "After this attempt (Run records 2.4, step_counts).",
+          "properties": {
+            "tries_used": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Proposed name. The tries used in this agent step (D14 A); a void attempt uses none (D28 A)."
+            },
+            "stage_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Proposed name. The attempts in this pipeline stage of the round (the guard of D19 A)."
+            }
+          },
+          "required": ["tries_used", "stage_attempts"],
+          "additionalProperties": false
+        },
+        "home_archive": {
+          "$ref": "#/$defs/file_ref",
+          "description": "File reference of the archived home folder, which stays in the attempt's own folder under attempts/ (Run records 2.2, 2.4 and 2.11)."
+        },
+        "outcome": {
+          "enum": ["output", "technical_failure", "void"],
+          "description": "As in Handoffs 2.13; absent only for an attempt whose start-up self-check failed before the turn (code startup_check_failed; Run records 2.4), unless a monitor record is unexplained, which makes the attempt void with code containment_hit. Incomplete monitoring evidence outranks it in the same way: it makes the attempt void with code monitor_incomplete (Runtime 13.2; AD-D06)."
+        },
+        "failure_class": {"$ref": "#/$defs/failure_class"},
+        "code": {
+          "enum": [
+            "route_refused",
+            "canary_hit",
+            "startup_check_failed",
+            "containment_hit",
+            "monitor_incomplete",
+            "runaway_guard",
+            "cap_hit"
+          ],
+          "description": "For a void attempt, a failed start-up self-check, the request guard under the development profile (runaway_guard) or the request cap under the evaluation profile (cap_hit) (Run records 2.4). Where several void conditions hold, the code is the first applicable of containment_hit, canary_hit, monitor_incomplete, route_refused and startup_check_failed (the last for a check repeated after the turn), in this order (Run records 2.4; Runtime 13.2, row 1); a schema sees one entry and cannot tell which conditions held, so that choice is not checked here."
+        },
+        "cap_hit": {
+          "enum": ["output_tokens", "requests", "wall_clock"],
+          "description": "Evaluation profile only: the frozen cap that the attempt hit; otherwise absent. A cap checked before an attempt is named in a code entry instead (Run records 2.4, 2.8 and 4.10)."
+        },
+        "input_above_cap": {
+          "const": true,
+          "description": "Under the evaluation profile only: true when the provider reported more input tokens for a forwarded request than the frozen input cap (Run records 2.4 and 4.10); otherwise absent."
+        },
+        "unknown_tool_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Tool calls refused because no tool is offered (Handoffs 2.13); zero when no request was forwarded."
+        },
+        "requests": {"$ref": "#/$defs/requests_summary"},
+        "usage": {"$ref": "#/$defs/usage_totals"},
+        "usage_unknown": {"$ref": "#/$defs/usage_unknown_summary"},
+        "served_model": {"$ref": "#/$defs/served_model"}
+      },
+      "required": [
+        "attempt_id",
+        "container_started_at",
+        "container_ended_at",
+        "wall_seconds",
+        "exit",
+        "requests",
+        "usage",
+        "usage_unknown",
+        "unknown_tool_calls",
+        "served_model",
+        "monitors",
+        "mount_diff",
+        "resources",
+        "step_counts",
+        "home_archive"
+      ],
+      "allOf": [
+        {"$ref": "#/$defs/usage_flags"},
+        {
+          "if": {"properties": {"outcome": {"const": "output"}}, "required": ["outcome"]},
+          "then": {"properties": {"failure_class": false, "code": false, "cap_hit": false, "followed_by": false}}
+        },
+        {
+          "$comment": "Run records 2.4, row outcome, failure_class, code; Handoffs 2.13: outcome technical_failure requires failure_class, except in exactly the two classless cases that code identifies, runaway_guard (the request guard, development profile) and cap_hit (the frozen request cap, evaluation profile), each under its existing conditions below. No other code stands in for a class.",
+          "if": {"properties": {"outcome": {"const": "technical_failure"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {"failure_class": {"enum": ["not_json", "not_in_format", "truncated", "crashed", "failure_form"]}},
+            "if": {"properties": {"code": {"enum": ["runaway_guard", "cap_hit"]}}, "required": ["code"]},
+            "else": {"required": ["failure_class"]}
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "void"}}, "required": ["outcome"]},
+          "then": {
+            "required": ["failure_class", "code"],
+            "properties": {
+              "failure_class": {"enum": ["route_refused", "canary_hit", "startup_check_failed", "containment_hit", "monitor_incomplete"]},
+              "code": {"enum": ["route_refused", "canary_hit", "startup_check_failed", "containment_hit", "monitor_incomplete"]}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"cap_hit": {"const": "requests"}}, "required": ["cap_hit"]},
+          "then": {
+            "required": ["code"],
+            "properties": {"outcome": {"const": "technical_failure"}, "code": {"const": "cap_hit"}, "failure_class": false}
+          }
+        },
+        {
+          "if": {"properties": {"cap_hit": {"const": "output_tokens"}}, "required": ["cap_hit"]},
+          "then": {"required": ["failure_class"], "properties": {"failure_class": {"const": "truncated"}}}
+        },
+        {
+          "if": {"properties": {"cap_hit": {"const": "wall_clock"}}, "required": ["cap_hit"]},
+          "then": {"required": ["failure_class"], "properties": {"failure_class": {"const": "crashed"}}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "cap_hit"}}, "required": ["code"]},
+          "then": {"required": ["cap_hit"], "properties": {"cap_hit": {"const": "requests"}}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "runaway_guard"}}, "required": ["code"]},
+          "then": {"properties": {"outcome": {"const": "technical_failure"}, "failure_class": false}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "route_refused"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "route_refused"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "canary_hit"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "canary_hit"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "startup_check_failed"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "startup_check_failed"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "containment_hit"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "containment_hit"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "monitor_incomplete"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "monitor_incomplete"}}}
+        },
+        {
+          "$comment": "Run records 2.4, monitors; Runtime 13.2, row 1 (AD-D06): in a real run, incomplete monitoring evidence with no unexplained record makes the attempt void, with code monitor_incomplete unless canary_hit comes first in the order of Runtime 13.2, also where the start-up self-check failed before the turn. A code monitor_incomplete needs incomplete evidence.",
+          "if": {
+            "properties": {
+              "run_kind": {"enum": ["pipeline", "evaluation", "measurement", "behaviour_variant"]},
+              "monitors": {
+                "properties": {"unexplained": {"const": 0}},
+                "anyOf": [
+                  {"properties": {"end_observed": {"const": false}}, "required": ["end_observed"]},
+                  {"properties": {"events_lost": {"minProperties": 1}}, "required": ["events_lost"]},
+                  {"properties": {"failed": {"minItems": 1}}, "required": ["failed"]}
+                ]
+              }
+            },
+            "required": ["run_kind", "monitors"]
+          },
+          "then": {
+            "required": ["outcome", "code"],
+            "properties": {"outcome": {"const": "void"}, "code": {"enum": ["canary_hit", "monitor_incomplete"]}}
+          }
+        },
+        {
+          "if": {"properties": {"code": {"const": "monitor_incomplete"}}, "required": ["code"]},
+          "then": {
+            "properties": {
+              "monitors": {
+                "anyOf": [
+                  {"properties": {"end_observed": {"const": false}}, "required": ["end_observed"]},
+                  {"properties": {"events_lost": {"minProperties": 1}}, "required": ["events_lost"]},
+                  {"properties": {"failed": {"minItems": 1}}, "required": ["failed"]}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {"not": {"required": ["outcome"]}},
+          "then": {
+            "required": ["code", "followed_by"],
+            "properties": {
+              "code": {"const": "startup_check_failed"},
+              "failure_class": false,
+              "cap_hit": false,
+              "requests": {"properties": {"forwarded": {"const": 0}}},
+              "result": false,
+              "followed_by": {"properties": {"action": {"enum": ["suspended", "stopped"]}}}
+            }
+          }
+        },
+        {
+          "$comment": "Run records 2.4, row outcome, failure_class, code; Runtime 13.2, row 1: in a real run, a monitor record that the reviewed baseline does not explain makes the attempt void with code containment_hit, also where the start-up self-check failed before the turn, which otherwise leaves the attempt without an outcome. In a containment run, the document says only that the test fails (Containment 5.2), so nothing is required there.",
+          "if": {
+            "properties": {
+              "monitors": {"properties": {"unexplained": {"minimum": 1}}, "required": ["unexplained"]},
+              "run_kind": {"enum": ["pipeline", "evaluation", "measurement", "behaviour_variant"]}
+            },
+            "required": ["monitors", "run_kind"]
+          },
+          "then": {
+            "required": ["outcome", "code"],
+            "properties": {"outcome": {"const": "void"}, "code": {"const": "containment_hit"}}
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"enum": ["technical_failure", "void"]}}, "required": ["outcome"]},
+          "then": {"required": ["followed_by"]}
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "void"}}, "required": ["outcome"]},
+          "then": {"properties": {"followed_by": {"properties": {"action": {"enum": ["suspended", "stopped"]}}}}}
+        },
+        {
+          "if": {
+            "properties": {"followed_by": {"properties": {"action": {"const": "rerun"}}, "required": ["action"]}},
+            "required": ["followed_by"]
+          },
+          "then": {
+            "required": ["failure_class"],
+            "properties": {"failure_class": {"enum": ["not_json", "not_in_format", "truncated", "crashed"]}}
+          }
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation"]}}, "required": ["run_kind"]},
+          "else": {"properties": {"cap_hit": false, "input_above_cap": false}}
+        },
+        {
+          "if": {
+            "properties": {"requests": {"properties": {"forwarded": {"const": 0}}, "required": ["forwarded"]}},
+            "required": ["requests"]
+          },
+          "then": {
+            "properties": {
+              "result": false,
+              "input_above_cap": false,
+              "unknown_tool_calls": {"const": 0},
+              "followed_by": {"properties": {"action": {"not": {"const": "rerun"}}}}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"requests": {"properties": {"forwarded": {"minimum": 1}}, "required": ["forwarded"]}},
+            "required": ["requests"]
+          },
+          "then": {"required": ["result"]}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["pipeline", "behaviour_variant"]}}, "required": ["run_kind"]},
+          "then": {"properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "suspended"]}}}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {
+            "properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "counted", "stopped"]}}}}
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "kind_attempt_started": {
+      "description": "attempt_started (Run records 2.4): before an attempt's container starts. In a containment test run whose test gives its input to the runner directly, packet preparation does not run: the entry has no packet_manifest and no reference_sha256, names the input in files, and gives as packet_sha256 and packet_sent_sha256 the checksums of the text handed to the runner (Run records 2.4, Attempts without packet preparation). Every other attempt has all four of these fields.",
+      "properties": {
+        "attempt_id": {"$ref": "#/$defs/ariadne_id"},
+        "agent": {"$ref": "#/$defs/agent"},
+        "part": {"$ref": "#/$defs/part"},
+        "try": {"$ref": "#/$defs/try"},
+        "rerun_of": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "For a technical re-run, the attempt id of the failed first try."
+        },
+        "binding": {"$ref": "#/$defs/file_ref", "description": "File reference of binding.json."},
+        "prompt_version": {"type": "string", "minLength": 1},
+        "prompt_sha256": {"$ref": "#/$defs/checksum"},
+        "reference_version": {"type": "string", "minLength": 1},
+        "reference_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the reference-text version, computed by packet preparation (Run records 2.4); absent only in a containment test run without packet preparation."
+        },
+        "example_manifest_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The id of the example manifest named for the attempt; in zero-shot a zero-shot manifest that lists no example (Run records 2.4; Roles 7.6; Evaluation interfaces 3.3)."
+        },
+        "condition": {"$ref": "#/$defs/condition"},
+        "packet_manifest": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "The packet manifest's entry id; absent only in a containment test run without packet preparation (Run records 2.4)."
+        },
+        "packet_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the packet as stored; in a containment test run without packet preparation, the checksum of the text handed to the runner."
+        },
+        "packet_sent_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the packet text as Hermes sends it, which the launcher registers at the gateway; in a containment test run without packet preparation, the checksum of the text handed to the runner."
+        },
+        "config_sha256": {"$ref": "#/$defs/checksum", "description": "The admitted config.yaml."},
+        "home_template_sha256": {"$ref": "#/$defs/checksum", "description": "The home template with the environment allowlist."},
+        "hermes_tag": {"type": "string", "minLength": 1, "description": "The binding's hermes_pin."},
+        "hermes_commit": {"$ref": "#/$defs/commit"},
+        "image_digest": {"type": "string", "minLength": 1, "description": "The container image."},
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The execution environment that runs the attempt, its host with the container engine, the monitors and the monitor collector, as the launcher's configuration names it (Run records 2.4; Containment 12.4, monitor hold; AD-D06)."
+        },
+        "route_id": {"type": "string", "minLength": 1},
+        "route_version": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1, "description": "The dated model the route record names."},
+        "budget_profile": {"$ref": "#/$defs/budget_profile_ref"},
+        "limits": {"$ref": "#/$defs/limits"},
+        "containment_report": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "The report id, under the binding's field name. For an attempt of a containment run, whose run_kind labels it, absent unless the attempt applies admission (AD-01 to AD-05)."
+        },
+        "runtime_manifest_sha256": {"$ref": "#/$defs/checksum"},
+        "admission": {"$ref": "#/$defs/ariadne_id", "description": "The id of the admission entry."},
+        "test_settings": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["capture", "rule_9_off", "negative_configuration"]},
+          "description": "Proposed name. Containment runs only: the test-only gateway settings used (D21 A; Runtime 11.2)."
+        },
+        "launcher_variants": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["a", "b", "c", "d", "e"]},
+          "description": "Proposed name. Containment runs only: the test-only launcher variants used, by their letters in Runtime 10.3 (D21 A)."
+        }
+      },
+      "required": [
+        "attempt_id",
+        "agent",
+        "part",
+        "try",
+        "binding",
+        "prompt_version",
+        "prompt_sha256",
+        "reference_version",
+        "example_manifest_id",
+        "condition",
+        "packet_sha256",
+        "packet_sent_sha256",
+        "config_sha256",
+        "home_template_sha256",
+        "hermes_tag",
+        "hermes_commit",
+        "image_digest",
+        "environment",
+        "route_id",
+        "route_version",
+        "model",
+        "budget_profile",
+        "limits",
+        "runtime_manifest_sha256",
+        "admission"
+      ],
+      "allOf": [
+        {
+          "if": {"properties": {"try": {"const": "technical_rerun"}}, "required": ["try"]},
+          "then": {"required": ["rerun_of"]}
+        },
+        {
+          "if": {"properties": {"try": {"const": "first"}}, "required": ["try"]},
+          "then": {"properties": {"rerun_of": false}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["containment"]}}, "required": ["run_kind"]},
+          "then": {
+            "$comment": "Run records 2.4, Attempts without packet preparation: a containment test run whose test gives its input to the runner directly has neither packet_manifest nor reference_sha256 and names the input in files; any other containment attempt has both.",
+            "dependentRequired": {"packet_manifest": ["reference_sha256"], "reference_sha256": ["packet_manifest"]},
+            "if": {"required": ["packet_manifest"]},
+            "else": {"required": ["files"], "properties": {"files": {"minItems": 1}}}
+          },
+          "else": {
+            "required": ["containment_report", "packet_manifest", "reference_sha256"],
+            "properties": {"test_settings": false, "launcher_variants": false}
+          }
+        },
+        {
+          "if": {
+            "properties": {"budget_profile": {"properties": {"name": {"const": "evaluation"}}, "required": ["name"]}},
+            "required": ["budget_profile"]
+          },
+          "then": {"properties": {"limits": {"required": ["input_cap"]}}},
+          "else": {"properties": {"limits": {"properties": {"input_cap": false}}}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_batch_ended": {
+      "description": "batch_ended (Run records 2.3): in the batch log, a batch ends.",
+      "properties": {
+        "end": {"$ref": "#/$defs/batch_end"},
+        "batch_record": {
+          "$ref": "#/$defs/file_ref",
+          "description": "Proposed name. The batch record, stored once at this point."
+        }
+      },
+      "required": ["end", "batch_record"],
+      "type": "object"
+    },
+    "kind_batch_refused": {
+      "description": "batch_refused (Run records 2.3): in the batch log, a batch does not start. It carries the fields of batch_started as far as the admission attempt determined them; a value not determined is absent.",
+      "properties": {
+        "items": {"$ref": "#/$defs/item_lists"},
+        "conditions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/condition"},
+          "description": "The conditions; none for a batch of deterministic-verifier items."
+        },
+        "repetitions": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The number of repetitions (Evaluation interfaces 4.6)."
+        },
+        "budget_profile": {"$ref": "#/$defs/budget_profile_ref"},
+        "runtime_manifest_sha256": {"$ref": "#/$defs/checksum"},
+        "containment_report": {"$ref": "#/$defs/ariadne_id", "description": "The containment report id."},
+        "canaries": {"$ref": "#/$defs/canaries"},
+        "follows_batch": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "For a batch that runs what a stopped batch did not complete, that batch's id."
+        },
+        "evaluation_plan": {"$ref": "#/$defs/evaluation_plan_ref", "description": "As in batch_started, where the admission attempt determined it."},
+        "tuning_disclosure": {"$ref": "#/$defs/tuning_disclosure", "description": "As in batch_started, where the admission attempt determined it."},
+        "failed_rules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 1, "maximum": 10},
+          "description": "Proposed name. Each admission rule of Evaluation interfaces 7.1 that failed, by number."
+        },
+        "batch_record": {
+          "$ref": "#/$defs/file_ref",
+          "description": "Proposed name. The batch record, stored once at this point."
+        }
+      },
+      "required": ["failed_rules", "batch_record"],
+      "type": "object"
+    },
+    "kind_batch_started": {
+      "description": "batch_started (Run records 2.3): in the batch log, a batch passes admission (Evaluation interfaces 7.1).",
+      "properties": {
+        "items": {"$ref": "#/$defs/item_lists"},
+        "conditions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/condition"},
+          "description": "The conditions; none for a batch of deterministic-verifier items."
+        },
+        "repetitions": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The number of repetitions (Evaluation interfaces 4.6)."
+        },
+        "budget_profile": {"$ref": "#/$defs/budget_profile_ref"},
+        "runtime_manifest_sha256": {"$ref": "#/$defs/checksum"},
+        "containment_report": {"$ref": "#/$defs/ariadne_id", "description": "The containment report id."},
+        "canaries": {"$ref": "#/$defs/canaries"},
+        "follows_batch": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "For a batch that runs what a stopped batch did not complete, that batch's id."
+        },
+        "evaluation_plan": {
+          "$ref": "#/$defs/evaluation_plan_ref",
+          "description": "For a held-out assessment, a batch of test items: the evaluation-plan version it references, fixed when the batch starts (Run records 2.3; Evaluation interfaces 4.8 and 7.1, rule 9); absent for a development batch."
+        },
+        "tuning_disclosure": {
+          "$ref": "#/$defs/tuning_disclosure",
+          "description": "For a held-out assessment: the tuning disclosure recorded before it started (Evaluation interfaces 4.8); absent for a development batch."
+        }
+      },
+      "required": [
+        "items",
+        "conditions",
+        "repetitions",
+        "budget_profile",
+        "runtime_manifest_sha256",
+        "containment_report",
+        "canaries"
+      ],
+      "dependentRequired": {"evaluation_plan": ["tuning_disclosure"], "tuning_disclosure": ["evaluation_plan"]},
+      "type": "object"
+    },
+    "kind_canary_review": {
+      "description": "canary_review (Run records 2.3): after a canary was found, Tillman Heisner's review of how it got there; until it is written, no result of the batch is reported.",
+      "properties": {
+        "review": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "reviewed_by": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "reviewed_on": {"$ref": "#/$defs/date", "description": "Proposed name."}
+      },
+      "required": ["review", "reviewed_by", "reviewed_on"],
+      "type": "object"
+    },
+    "kind_code": {
+      "description": "code (Run records 2.3 and 2.8): a run-log code without an attempt, for example a failed packet check, a refusal by safe XML parsing (after its input_check entry) or the launcher's refusal of a home folder that is not empty.",
+      "properties": {
+        "code": {"$ref": "#/$defs/code"},
+        "step": {"type": "string", "minLength": 1, "description": "Proposed name. The step it stopped."},
+        "details": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. Details, in plain words; for packet_check_failed, the block and what was found, a canary by its position in the canary list, never its text (Run records 2.3, code; 2.5, canary)."
+        },
+        "followed_by": {"$ref": "#/$defs/followed_by"},
+        "cap_hit": {
+          "enum": ["input_tokens", "attempts"],
+          "description": "For code cap_hit: the cap checked before an attempt, input_tokens or attempts (Run records 4.10)."
+        },
+        "files_found": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1},
+          "description": "Proposed name. For home_not_empty: the files found; files then holds the file reference of the prepared attempt folder's binding.json (Run records 2.8; Runtime 10.1)."
+        },
+        "construct_found": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. For xml_refused: the construct found, never the content an entity would resolve to."
+        },
+        "monitors_not_ready": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["M1", "M2", "M3", "collector"]},
+          "description": "For monitor_incomplete before the container starts: the monitors, or the collector, that were not ready by the readiness deadline of the isolation profile (Containment 12.2); files then holds the file reference of the prepared attempt folder's binding.json (Run records 2.8; Runtime 10.1 and 10.3, step 3)."
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "For monitor_incomplete: the execution environment, as in attempt_started (Run records 2.4)."
+        }
+      },
+      "required": ["code", "step", "followed_by"],
+      "allOf": [
+        {
+          "if": {"properties": {"code": {"const": "cap_hit"}}, "required": ["code"]},
+          "then": {"required": ["cap_hit"], "properties": {"run_kind": {"const": "evaluation"}}}
+        },
+        {
+          "if": {"properties": {"code": {"enum": ["cap_hit"]}}, "required": ["code"]},
+          "else": {"properties": {"cap_hit": false}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "home_not_empty"}}, "required": ["code"]},
+          "then": {"required": ["files_found", "files"], "properties": {"files": {"minItems": 1}}}
+        },
+        {
+          "if": {"properties": {"code": {"enum": ["home_not_empty"]}}, "required": ["code"]},
+          "else": {"properties": {"files_found": false}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "xml_refused"}}, "required": ["code"]},
+          "then": {"required": ["construct_found", "cause"]}
+        },
+        {
+          "if": {"properties": {"code": {"enum": ["xml_refused"]}}, "required": ["code"]},
+          "else": {"properties": {"construct_found": false}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "monitor_incomplete"}}, "required": ["code"]},
+          "then": {"required": ["monitors_not_ready", "environment", "files"], "properties": {"files": {"minItems": 1}}},
+          "else": {"properties": {"monitors_not_ready": false, "environment": false}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["pipeline", "behaviour_variant"]}}, "required": ["run_kind"]},
+          "then": {"properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "suspended"]}}}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {
+            "properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "counted", "stopped"]}}}}
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "kind_containment_report": {
+      "description": "containment_report (Run records 2.3 and 2.7): in a containment suite run, when the report is stored.",
+      "properties": {
+        "report_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name."},
+        "suite_version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "started_at": {"$ref": "#/$defs/utc_time"},
+        "ended_at": {"$ref": "#/$defs/utc_time"},
+        "started_by": {"type": "string", "minLength": 1, "description": "Proposed name. Who started the run."},
+        "status": {"enum": ["VERIFIED", "FAILED"]},
+        "manifest_items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": {
+                "enum": [
+                  "hermes",
+                  "workflow_controller",
+                  "model_gateway_configuration",
+                  "isolation_profile",
+                  "container_image",
+                  "lockfile",
+                  "hermes_home_template",
+                  "prompts",
+                  "admitted_request_templates",
+                  "host_kernel_release",
+                  "fixtures"
+                ],
+                "description": "Proposed name and values: the items of Containment 12.2."
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Proposed name. Which one, where an item binds several things, for example the tag and the commit, or the admitted image and the test layer."
+              },
+              "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name."},
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Proposed name. A bound value that is not a checksum, for example a tag or a kernel release."
+              }
+            },
+            "required": ["item"],
+            "additionalProperties": false,
+            "anyOf": [{"required": ["sha256"]}, {"required": ["value"]}]
+          },
+          "description": "Proposed name. The items of the runtime manifest with their checksums (Containment 12.2)."
+        },
+        "runtime_manifest_sha256": {"$ref": "#/$defs/checksum", "description": "The manifest checksum."},
+        "report": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The report's file reference."},
+        "monitoring_deadlines": {
+          "type": "object",
+          "properties": {
+            "status": {"enum": ["provisional", "calibrated"], "description": "Proposed name and values. provisional ('not calibrated') while either deadline is provisional."},
+            "approved_by": {"type": "string", "minLength": 1, "description": "Proposed name. Who approved the durations, Tillman Heisner (Runtime 10.3, step 3)."},
+            "approved_at": {"$ref": "#/$defs/utc_time", "description": "Proposed name."}
+          },
+          "required": ["status", "approved_by", "approved_at"],
+          "additionalProperties": false,
+          "description": "Proposed name. The status of the isolation profile's two monitoring deadlines with their approval (Run records 2.7; Containment 12.2 and 12.3). The durations are in the isolation profile, which manifest_items binds, and in the report; no value is set here."
+        }
+      },
+      "required": [
+        "report_id",
+        "suite_version",
+        "started_at",
+        "ended_at",
+        "started_by",
+        "status",
+        "manifest_items",
+        "runtime_manifest_sha256",
+        "report",
+        "monitoring_deadlines"
+      ],
+      "allOf": [{"properties": {"run_kind": {"const": "containment"}}}],
+      "type": "object"
+    },
+    "kind_correction": {
+      "description": "correction (Run records 2.3 and 2.10, rule 2): a later entry corrects an earlier one, which stays.",
+      "properties": {
+        "corrects": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The entry it corrects."},
+        "what": {"type": "string", "minLength": 1, "description": "Proposed name. What it corrects."}
+      },
+      "required": ["corrects", "what"],
+      "type": "object"
+    },
+    "kind_evaluation_record": {
+      "description": "evaluation_record (Run records 2.3): when a run of an evaluation or measurement batch ends.",
+      "properties": {
+        "evaluation_run_record": {
+          "$ref": "#/$defs/file_ref",
+          "description": "Proposed name. The evaluation run record, stored once (Evaluation interfaces 10.1)."
+        }
+      },
+      "required": ["evaluation_run_record"],
+      "allOf": [{"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}}],
+      "type": "object"
+    },
+    "kind_fix": {
+      "description": "fix (Run records 2.3): in the batch log, after the batch has stopped; written before any batch runs what this one did not complete.",
+      "properties": {
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. The note of how the cause was fixed (Workflow 4.4.4)."
+        },
+        "written_by": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "After monitor_incomplete: the execution environment whose fix the note records (Run records 2.3; Containment 12.4; AD-D06)."
+        },
+        "cause_entry": {
+          "type": "object",
+          "description": "Proposed name. The entry that recorded the cause.",
+          "properties": {
+            "run_id": {"$ref": "#/$defs/ariadne_id", "description": "Absent for an entry of this batch log."},
+            "entry_id": {"$ref": "#/$defs/ariadne_id"}
+          },
+          "required": ["entry_id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["note", "written_by", "cause_entry"],
+      "type": "object"
+    },
+    "kind_human_act": {
+      "description": "human_act (Run records 2.3): a human action file is stored (an override, a structural edit or the mapping of held items, Handoffs 2.11), or a named person acts on the run (Workflow 2.1); in a test run of a containment suite run, an act that the suite makes in the person's place, labelled as such (Containment 2.6). A named person working on the record takes it, normally the scientist; there is no separate curator role (Issue format 6). Entries written before Run records 1.1 keep the kind curator_act as history.",
+      "properties": {
+        "action_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Proposed name. The human action's id, for example HA-001 (Handoffs 2.11)."
+        },
+        "action": {
+          "enum": ["override", "structural_edit", "map"],
+          "description": "Proposed name. With action_id: the action as its file records it (Handoffs 2.11): override (Issue format 6.1), structural_edit (Issue format 6.2), or map, the mapping of held items (Issue format 6.2, Held issues and bindings). Disposing of a held item is a structural_edit."
+        },
+        "act": {
+          "enum": ["start_run", "send_issue_on", "mark_round_done", "resume", "end_run", "withdraw_run"],
+          "description": "Proposed name and values: the acts of Workflow 2.1 that need no action file."
+        },
+        "by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The named person who took the action or act, its author (Run records 2.3; Handoffs 2.11)."
+        },
+        "acted_at": {
+          "$ref": "#/$defs/utc_time",
+          "description": "With action_id: the action file's at, when the action was recorded (Handoffs 2.11; Issue format 6), under another name because the common at is when software wrote this entry (Run records 2.3). An act on the run has only the common at."
+        },
+        "entered_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only for assisted entry: the named person who entered the action for its author (Issue format 6.3). Entry assistance confers no authority of its own."
+        },
+        "original": {
+          "$ref": "#/$defs/file_ref",
+          "description": "With entered_by: the author's original message as received, stored unchanged, whose artifact id the action file holds as original_ref (Run records 2.1 and 2.3; Handoffs 2.11; Issue format 6.3), as for answer_received and approval."
+        },
+        "by_suite": {
+          "const": true,
+          "description": "Proposed name. In a test run of a containment suite run only: the suite made the act in the person's place, and no person is named (Run records 2.3, human_act; Containment 2.6)."
+        },
+        "issues": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/issue_id"},
+          "description": "Proposed name. The issues concerned."
+        },
+        "basis": {"$ref": "#/$defs/basis"},
+        "split_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/object_id"},
+          "description": "Proposed name. For a structural edit only: the ids of the objects the edit split, as its action file declares them (Handoffs 2.11; Issue format 6.2 and 7.1, Live pointers)."
+        },
+        "merged_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/object_id"},
+          "description": "Proposed name. For a structural edit only: the ids of the objects the edit merged, as its action file declares them (Handoffs 2.11; Issue format 6.2 and 7.1, Live pointers)."
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. For a resume, the note of how the cause was fixed; for a withdrawal, the note of why (Workflow 3.1, row 38); for an action, the action file's optional note (Handoffs 2.11): for an override as Issue format 6.1 requires it, for a structural edit an explanation for readers, never evidence and never part of the basis."
+        },
+        "scientist": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. For start_run, the scientist named."
+        },
+        "base": {
+          "$ref": "#/$defs/file_ref",
+          "description": "For an action: the file reference of the working-copy version whose artifact id its action file holds as base (Handoffs 2.11; Issue format 7.1, Working copy; AD-D04)."
+        },
+        "result": {
+          "enum": ["applied", "refused_stale"],
+          "description": "For an action: applied to the version that base names, written once that version is stored, or refused as stale because base is not the current version (Run records 2.3; Workflow 4.2, step 6). The applied actions form the accepted chain that a resume rebuilds; a refused action is never replayed, and an action file with neither result is an interrupted application (Workflow 4.4.4)."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "With result applied: the working-copy version the action made (Run records 2.3, working_copy)."
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "For a resume after monitor_incomplete: the execution environment whose fix the note records (Containment 12.4; AD-D06)."
+        }
+      },
+      "oneOf": [{"required": ["action_id"]}, {"required": ["act"]}],
+      "allOf": [
+        {
+          "if": {"required": ["by_suite"]},
+          "then": {
+            "properties": {"run_kind": {"const": "containment"}, "by": false, "entered_by": false, "original": false}
+          },
+          "else": {"required": ["by"]}
+        },
+        {
+          "$comment": "Run records 2.3; Handoffs 2.11; Issue format 6.3: assisted entry keeps the author in by, the person who entered it in entered_by, and the stored original message as original, the file that the action file's original_ref names.",
+          "if": {"required": ["entered_by"]},
+          "then": {"required": ["original"]},
+          "else": {"properties": {"original": false}}
+        },
+        {
+          "if": {"required": ["action_id"]},
+          "then": {"required": ["action", "acted_at", "base", "result"]},
+          "else": {"properties": {"action": false, "basis": false, "acted_at": false, "base": false, "result": false, "version": false}}
+        },
+        {
+          "if": {"properties": {"result": {"const": "applied"}}, "required": ["result"]},
+          "then": {"required": ["version"]},
+          "else": {"properties": {"version": false}}
+        },
+        {
+          "if": {"properties": {"act": {"const": "resume"}}, "required": ["act"]},
+          "else": {"properties": {"environment": false}}
+        },
+        {
+          "$comment": "Run records 2.3, human_act; Issue format 6.2; Handoffs 2.11: every structural edit, whatever it addresses, records its basis; the other actions have none.",
+          "if": {"properties": {"action": {"const": "structural_edit"}}, "required": ["action"]},
+          "then": {"required": ["basis"]},
+          "else": {"properties": {"basis": false, "split_ids": false, "merged_ids": false}}
+        },
+        {
+          "if": {"properties": {"act": {"enum": ["resume", "withdraw_run"]}}, "required": ["act"]},
+          "then": {"required": ["note"]}
+        },
+        {
+          "if": {"properties": {"act": {"const": "start_run"}}, "required": ["act"]},
+          "then": {"required": ["scientist"]}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_working_copy": {
+      "description": "working_copy (Run records 2.3): software stores a version of a round's working copy, when the round's answers have been applied to a copy of the snapshot (version 0) and after each accepted human action (Workflow 4.2, steps 2 and 6; Issue format 7.1, Working copy; AD-D04). A version is never committed by itself; the commit is the next round's snapshot.",
+      "properties": {
+        "version": {"type": "integer", "minimum": 0, "description": "Counted from 0 within the round."},
+        "copy": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The version as stored."},
+        "made_from": {
+          "$ref": "#/$defs/file_ref",
+          "description": "Proposed name. The round snapshot, for version 0, or the version it was made from."
+        },
+        "answers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/file_ref"},
+          "description": "Proposed name. For version 0: the answer files applied; absent in a round without questions and for a structural edit outside a round of questions."
+        },
+        "action_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Proposed name. For a later version: the human action that made it."
+        }
+      },
+      "required": ["version", "copy", "made_from"],
+      "allOf": [
+        {
+          "if": {"properties": {"version": {"const": 0}}, "required": ["version"]},
+          "then": {"properties": {"action_id": false}},
+          "else": {"required": ["action_id"], "properties": {"answers": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_input_check": {
+      "description": "input_check (Run records 2.3): at intake, at every resume for the input, before each packet that holds the input and each deterministic check; before each attempt for the budget profile file; in runs of a batch also for frozen files, example files, earlier outputs and folders; in a pipeline run also at every resume, for the stored round snapshot that a check or application runs on again, and before application and at every resume, for the answer files and answer originals, and at every resume, for the last stored version of the round's working copy (Run records 2.9); where the stop follows the preparation of the attempt folder (a budget-profile mismatch), files holds the file reference of its binding.json (Run records 2.3; Runtime 10.1, Staging and keeping).",
+      "properties": {
+        "result": {"enum": ["passed", "xml_refused", "checksum_mismatch", "wrong_folder"]},
+        "parser_profile": {
+          "type": "object",
+          "description": "Proposed name. At intake: the profile of the safe XML parser (Run records 2.1, row Input).",
+          "properties": {
+            "name": {"type": "string", "minLength": 1, "description": "Proposed name."},
+            "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+            "document_type_definitions": {"const": "off", "description": "Proposed name."},
+            "external_entities": {"const": "off", "description": "Proposed name."},
+            "network_access": {"const": "off", "description": "Proposed name."}
+          },
+          "required": ["name", "version", "document_type_definitions", "external_entities", "network_access"],
+          "additionalProperties": false
+        },
+        "checked": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Proposed name. The file checked: its artifact id or file name."
+              },
+              "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The checksum computed now."},
+              "compared_with": {"$ref": "#/$defs/compared_with", "description": "Proposed name."},
+              "compared_sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The checksum it was compared with."},
+              "folder": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Proposed name. For a file placed in an evaluation packet, the folder it was read from."
+              },
+              "result": {"enum": ["passed", "checksum_mismatch", "wrong_folder"]}
+            },
+            "required": ["file", "sha256", "compared_with", "compared_sha256", "result"],
+            "additionalProperties": false
+          },
+          "description": "Proposed name. Each file checked, with what its checksum was compared with."
+        },
+        "binding_values": {
+          "enum": ["match", "differ"],
+          "description": "Proposed name. For the budget profile file: whether the binding's values match the profile; a difference is result checksum_mismatch."
+        },
+        "construct_found": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. For xml_refused: the construct found, never the content an entity would resolve to."
+        },
+        "followed_by": {"$ref": "#/$defs/followed_by"}
+      },
+      "required": ["result"],
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"enum": ["checksum_mismatch", "wrong_folder"]}}, "required": ["result"]},
+          "then": {"required": ["followed_by"]}
+        },
+        {
+          "if": {"properties": {"result": {"enum": ["passed", "xml_refused"]}}, "required": ["result"]},
+          "then": {"properties": {"followed_by": false}}
+        },
+        {
+          "if": {"properties": {"result": {"const": "xml_refused"}}, "required": ["result"]},
+          "then": {"required": ["construct_found"]}
+        },
+        {
+          "if": {"properties": {"result": {"enum": ["xml_refused"]}}, "required": ["result"]},
+          "else": {"properties": {"construct_found": false}}
+        },
+        {
+          "if": {"properties": {"result": {"const": "wrong_folder"}}, "required": ["result"]},
+          "then": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}}
+        },
+        {
+          "if": {"properties": {"binding_values": {"const": "differ"}}, "required": ["binding_values"]},
+          "then": {"properties": {"result": {"const": "checksum_mismatch"}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["pipeline", "behaviour_variant"]}}, "required": ["run_kind"]},
+          "then": {"properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "suspended"]}}}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {
+            "properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "counted", "stopped"]}}}}
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "kind_issue_list": {
+      "description": "issue_list (Run records 2.3): after each report, answer application and human action.",
+      "properties": {
+        "issue_list": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The issue list as now stored."},
+        "counts": {
+          "type": "object",
+          "description": "Proposed name. Counts by kind and by status.",
+          "properties": {
+            "by_kind": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "missing_required",
+                  "missing_recommended",
+                  "missing_optional",
+                  "wrong_type",
+                  "broken_reference",
+                  "bad_citation",
+                  "wrong_unit",
+                  "source_conflict",
+                  "wrong_value",
+                  "missed_value"
+                ]
+              },
+              "additionalProperties": {"type": "integer", "minimum": 0},
+              "description": "Proposed name."
+            },
+            "by_status": {
+              "type": "object",
+              "propertyNames": {"enum": ["open", "unavailable", "held", "closed"]},
+              "additionalProperties": {"type": "integer", "minimum": 0},
+              "description": "Proposed name."
+            }
+          },
+          "required": ["by_kind", "by_status"],
+          "additionalProperties": false
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "issue_id": {"$ref": "#/$defs/issue_id"},
+              "change": {
+                "enum": ["opened", "reopened", "closed", "made_unavailable", "made_held", "returned_from_held"],
+                "description": "Proposed name and values: opened, reopened, closed, made unavailable, made held, or returned from held to the status it had before (Run records 2.3; Issue format 7.1, Live pointers)."
+              },
+              "round": {"type": "integer", "minimum": 1},
+              "closed_by": {"$ref": "#/$defs/closed_by"}
+            },
+            "required": ["issue_id", "change", "round"],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {"properties": {"change": {"const": "closed"}}, "required": ["change"]},
+                "then": {"required": ["closed_by"]},
+                "else": {"properties": {"closed_by": false}}
+              }
+            ]
+          },
+          "description": "Proposed name. The issues opened, reopened, closed, made unavailable, made held or returned from held by this change, each with its round and, for a change closed, closed_by, which an issue holds only while it is closed (Issue format 4)."
+        },
+        "binding_map": {
+          "$ref": "#/$defs/file_ref",
+          "description": "The file reference of the binding map as now stored, the same reference as before when no binding changed (Run records 2.3, Binding map): a run-log file that binds each live pointer to the id of the object it addresses."
+        }
+      },
+      "required": ["issue_list", "counts", "changes", "binding_map"],
+      "type": "object"
+    },
+    "kind_late_output": {
+      "description": "late_output (Run records 2.3): output arrives after a stop, or for another attempt or an older round.",
+      "properties": {
+        "attempt_id": {"$ref": "#/$defs/ariadne_id"},
+        "arrived": {"type": "string", "minLength": 1, "description": "Proposed name. What arrived."},
+        "discarded": {"const": true, "description": "Proposed name. Late output is always discarded."}
+      },
+      "required": ["attempt_id", "arrived", "discarded"],
+      "type": "object"
+    },
+    "kind_not_judged": {
+      "description": "not_judged (Run records 2.3): the verification check finds an issue left without a judgment, or with two different verdicts.",
+      "properties": {
+        "issue_id": {"$ref": "#/$defs/issue_id"},
+        "routing": {"type": "string", "minLength": 1, "description": "Proposed name. The routing applied."}
+      },
+      "required": ["issue_id", "routing"],
+      "type": "object"
+    },
+    "kind_packet_manifest": {
+      "description": "packet_manifest (Run records 2.3): for each packet. For a packet of an evaluation or measurement batch also the fields of Evaluation interfaces 3.6; the common field files keeps its meaning, so that no entry holds two fields of one name.",
+      "allOf": [
+        {"$ref": "#/$defs/packet_manifest_part"},
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {"$ref": "#/$defs/evaluation_packet_part"}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "else": {
+            "properties": {
+              "item_id": false,
+              "condition": false,
+              "repetition": false,
+              "placed_files": false,
+              "issue_ids": false
+            }
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "kind_pointer_hold": {
+      "description": "pointer_hold (Run records 2.3): software cannot retarget a live pointer one-to-one, because its bound id no longer exists or exists more than once, the edit declared it split or merged, or a list without element ids on its path changed (Issue format 7.1, Live pointers). One entry per pointer; cause names the entry of the step that moved the objects. A hold ends with a pointer_retarget entry with reason mapped, or with the structural edit that disposes of it (its human_act entry).",
+      "properties": {
+        "owner": {"$ref": "#/$defs/pointer_owner"},
+        "issue_id": {"$ref": "#/$defs/issue_id", "description": "For owner issue: the held issue."},
+        "pointer_before": {"$ref": "#/$defs/pointer", "description": "The pointer as it stood."},
+        "object_id": {"$ref": "#/$defs/object_id", "description": "The id the pointer was bound to."},
+        "reason": {
+          "enum": ["id_missing", "id_not_unique", "split_or_merged", "list_changed"],
+          "description": "As software found it: the bound id no longer exists (id_missing), or exists more than once (id_not_unique); the structural edit declared the bound id split or merged in its split_ids or merged_ids (split_or_merged); or the binding's path, below its id or from the document root, passes through a list whose elements have no id and the edit or answer inserted, removed or reordered elements of that list (list_changed). Never a guessed split or merge (Issue format 7.1)."
+        },
+        "status_before": {
+          "enum": ["open", "unavailable"],
+          "description": "For owner issue: the status the issue had before it was held, to which a mapping returns it."
+        }
+      },
+      "required": ["owner", "pointer_before", "object_id", "reason", "cause"],
+      "allOf": [
+        {
+          "if": {"properties": {"owner": {"const": "issue"}}, "required": ["owner"]},
+          "then": {"required": ["issue_id", "status_before"]},
+          "else": {"properties": {"issue_id": false, "status_before": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_pointer_retarget": {
+      "description": "pointer_retarget (Run records 2.3): software retargets a live pointer through its bound id after a structural edit or an answer application that moved objects, or after a check before use found that the pointer addresses another object; or a named person maps a held binding (Issue format 6.2 and 7.1, Live pointers). One entry per pointer; cause names the entry of the step that moved the objects, or the human_act entry of the mapping. Stored snapshots, stored answers and source xpaths keep their original pointers.",
+      "properties": {
+        "owner": {"$ref": "#/$defs/pointer_owner"},
+        "issue_id": {"$ref": "#/$defs/issue_id", "description": "For owner issue: the issue whose pointer is retargeted."},
+        "pointer_before": {"$ref": "#/$defs/pointer", "description": "The pointer before the retarget."},
+        "pointer_after": {"$ref": "#/$defs/pointer", "description": "The pointer after the retarget."},
+        "object_id": {"$ref": "#/$defs/object_id", "description": "The id the pointer is bound to afterwards."},
+        "object_id_before": {
+          "$ref": "#/$defs/object_id",
+          "description": "Where a mapping binds the pointer to another object: the id it was bound to before."
+        },
+        "reason": {
+          "enum": ["id_moved", "mapped"],
+          "description": "id_moved: software found the bound id exactly once at another place; mapped: a named person's mapping of a held binding."
+        },
+        "status_after": {
+          "enum": ["open", "unavailable"],
+          "description": "For a mapped issue: the status it returns to, the one it had before it was held."
+        }
+      },
+      "required": ["owner", "pointer_before", "pointer_after", "object_id", "reason", "cause"],
+      "allOf": [
+        {
+          "if": {"properties": {"owner": {"const": "issue"}}, "required": ["owner"]},
+          "then": {"required": ["issue_id"]},
+          "else": {"properties": {"issue_id": false}}
+        },
+        {
+          "if": {
+            "properties": {"owner": {"const": "issue"}, "reason": {"const": "mapped"}},
+            "required": ["owner", "reason"]
+          },
+          "then": {"required": ["status_after"]},
+          "else": {"properties": {"status_after": false}}
+        },
+        {
+          "if": {"properties": {"reason": {"const": "id_moved"}}, "required": ["reason"]},
+          "then": {"properties": {"object_id_before": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_projection": {
+      "description": "projection (Run records 2.3): before a run, for the extraction (Handoffs 4.2).",
+      "properties": {
+        "xml_bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. The entry's XML bytes."},
+        "node_count": {"type": "integer", "minimum": 0, "description": "Proposed name. The entry's non-empty node count."},
+        "ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Proposed name. The ratio used (r of Handoffs 4.2)."
+        },
+        "projected_output": {"type": "number", "minimum": 0, "description": "Proposed name. The projected output."},
+        "decision": {"enum": ["whole", "parts"], "description": "Proposed name."}
+      },
+      "required": ["xml_bytes", "node_count", "ratio", "projected_output", "decision"],
+      "type": "object"
+    },
+    "kind_question_screen": {
+      "description": "question_screen (Run records 2.3; D23 A): the question screen finds something; the round goes to the scientist unchanged.",
+      "properties": {
+        "question_id": {"$ref": "#/$defs/question_id"},
+        "found": {"type": "string", "minLength": 1, "description": "Proposed name. What the screen found."},
+        "in_packet_quotes": {
+          "type": "boolean",
+          "description": "For an address found: whether it occurs in the quotes or values of the round's own packet, so that addresses copied from the input are counted apart from new ones (Handoffs 2.9); absent for a word that asks for a secret."
+        }
+      },
+      "required": ["question_id", "found"],
+      "type": "object"
+    },
+    "kind_resumed": {
+      "description": "resumed (Run records 2.3; Workflow 4.4.4).",
+      "properties": {
+        "resumed_at": {"$ref": "#/$defs/stage", "description": "Proposed name. The stage resumed at."},
+        "budget_profile": {
+          "$ref": "#/$defs/budget_profile_ref",
+          "description": "Where the run resumes under a new budget-profile version: that version and the checksum of its file (Run records 4.1, rule 6)."
+        },
+        "counters": {"$ref": "#/$defs/counters", "description": "Proposed name."},
+        "last_snapshot": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The last round snapshot."}
+      },
+      "required": ["resumed_at"],
+      "type": "object"
+    },
+    "kind_run_ended": {
+      "description": "run_ended (Run records 2.3): the ends of Workflow 2, or the end of a run of a batch (Evaluation interfaces 10.4).",
+      "properties": {
+        "end_state": {
+          "enum": [
+            "approved",
+            "not_approvable",
+            "failed_technical",
+            "withdrawn",
+            "completed",
+            "technical_failure",
+            "not_run",
+            "stopped"
+          ],
+          "description": "The end state: for a pipeline run an end of Workflow 2 (approved, not_approvable, failed_technical, withdrawn); for a run of a batch, its run_end (Evaluation interfaces 10.4); for a containment suite run or a behaviour-variant run, completed or stopped; for a test run of a containment suite run, completed, stopped, or failed_technical where its test ends it as a person would (CT-18) (Run records 2.3)."
+        },
+        "suite_run": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Proposed name. For a test run of a containment suite run: the suite run it belongs to (Run records 2.3)."
+        },
+        "test": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. For a test run: the test, for example CT-18."
+        },
+        "new_run_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Proposed name. If the entry is run again, the new run's id."
+        },
+        "counters": {"$ref": "#/$defs/counters", "description": "Proposed name."},
+        "last_snapshot": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The last round snapshot."}
+      },
+      "required": ["end_state", "counters"],
+      "allOf": [
+        {
+          "if": {"properties": {"run_kind": {"const": "pipeline"}}, "required": ["run_kind"]},
+          "then": {"properties": {"end_state": {"enum": ["approved", "not_approvable", "failed_technical", "withdrawn"]}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {"properties": {"end_state": {"enum": ["completed", "technical_failure", "not_run", "stopped"]}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"const": "behaviour_variant"}}, "required": ["run_kind"]},
+          "then": {"properties": {"end_state": {"enum": ["completed", "stopped"]}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"const": "containment"}}, "required": ["run_kind", "suite_run"]},
+          "then": {"required": ["test"], "properties": {"end_state": {"enum": ["completed", "stopped", "failed_technical"]}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"const": "containment"}}, "required": ["run_kind"]},
+          "then": {
+            "if": {"required": ["suite_run"]},
+            "else": {"properties": {"end_state": {"enum": ["completed", "stopped"]}, "test": false}}
+          },
+          "else": {"properties": {"suite_run": false, "test": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_run_started": {
+      "description": "run_started (Run records 2.3): a named person starts a pipeline run, or the workflow controller starts a run of an evaluation or measurement batch, a suite run or one of its test runs, or a behaviour-variant run.",
+      "properties": {
+        "input_entry": {
+          "$ref": "#/$defs/input_entry",
+          "description": "Proposed name. Except in a suite run: the input entry."
+        },
+        "input": {
+          "$ref": "#/$defs/file_ref",
+          "description": "Proposed name. Except in a suite run: the stored input's file reference; its sha256 is the checksum as verified."
+        },
+        "download_date": {
+          "$ref": "#/$defs/date",
+          "description": "Proposed name. The input's download date. A fixture has none; a suite run has no input of its own."
+        },
+        "scientist": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. Pipeline runs: the named scientist."
+        },
+        "by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pipeline runs: the named person who started the run, normally the scientist; there is no separate curator role (Run records 2.3)."
+        },
+        "item_id": {"type": "string", "minLength": 1, "description": "Runs of a batch: the item."},
+        "condition": {
+          "$ref": "#/$defs/condition",
+          "description": "Runs of a batch: the condition; none for a deterministic-verifier run."
+        },
+        "repetition": {"type": "integer", "minimum": 1, "description": "Runs of a batch: the repetition."},
+        "suite_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. Suite runs and behaviour-variant runs: the suite version."
+        },
+        "fixture_store_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. Suite runs: the version of the fixture store (Containment 12.2, row Fixtures), in place of one input."
+        },
+        "suite_run": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Proposed name. For a test run of a containment suite run: the suite run it belongs to (Run records 2.3; Containment 2.6). Its fixture inputs are named as for a suite run."
+        },
+        "test": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. For a test run: the test, for example CT-18."
+        },
+        "agent": {"$ref": "#/$defs/agent", "description": "Proposed name. For a test run: the agent, where the test runs one."},
+        "behaviour_variant": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. Behaviour-variant runs: the behaviour variant (Containment 7.5)."
+        },
+        "fixture_set": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. Behaviour-variant runs: the fixture set it uses."
+        },
+        "pins": {
+          "type": "object",
+          "description": "Proposed name. The pins: Hermes tag and commit, EnzymeML commit and schema checksum, ARIADNE commit (register, section 3).",
+          "properties": {
+            "hermes_tag": {"type": "string", "minLength": 1},
+            "hermes_commit": {"$ref": "#/$defs/commit"},
+            "enzymeml_commit": {"$ref": "#/$defs/commit", "description": "Proposed name."},
+            "enzymeml_schema_sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name."},
+            "ariadne_commit": {"$ref": "#/$defs/commit", "description": "Proposed name."}
+          },
+          "required": ["hermes_tag", "hermes_commit", "enzymeml_commit", "enzymeml_schema_sha256", "ariadne_commit"],
+          "additionalProperties": false
+        },
+        "budget_profile": {"$ref": "#/$defs/budget_profile_ref"},
+        "follows_run": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Proposed name. For a restart, the run it follows (Workflow 4.4.5)."
+        }
+      },
+      "required": ["pins", "budget_profile"],
+      "allOf": [
+        {
+          "if": {"properties": {"run_kind": {"const": "pipeline"}}, "required": ["run_kind"]},
+          "then": {"required": ["scientist", "by"]}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {"required": ["batch_id", "item_id", "repetition"]}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "else": {"properties": {"batch_id": false, "item_id": false, "condition": false, "repetition": false}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"const": "containment"}}, "required": ["run_kind"]},
+          "then": {
+            "$comment": "Run records 2.3, run_started: a suite run gives its suite version and the version of the fixture store; a test run gives the suite run it belongs to, the test and the agent.",
+            "properties": {"input_entry": false, "input": false, "download_date": false},
+            "if": {"required": ["suite_run"]},
+            "else": {"required": ["suite_version", "fixture_store_version"]}
+          }
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["containment"]}}, "required": ["run_kind"]},
+          "else": {"properties": {"fixture_store_version": false}, "required": ["input_entry", "input"]}
+        },
+        {
+          "if": {"properties": {"run_kind": {"const": "containment"}}, "required": ["run_kind"]},
+          "then": {
+            "if": {"required": ["suite_run"]},
+            "then": {"required": ["test"]},
+            "else": {"properties": {"test": false, "agent": false}}
+          },
+          "else": {"properties": {"suite_run": false, "test": false, "agent": false}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"const": "behaviour_variant"}}, "required": ["run_kind"]},
+          "then": {"required": ["suite_version", "behaviour_variant", "fixture_set"]}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["pipeline"]}}, "required": ["run_kind"]},
+          "else": {"properties": {"scientist": false, "by": false}}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_schema_check": {
+      "description": "schema_check (Run records 2.3): before each deterministic check.",
+      "properties": {
+        "schema_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The pinned schema file's checksum as computed now."
+        },
+        "pinned_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The checksum of its pin (register, section 3)."
+        },
+        "result": {"enum": ["passed", "checksum_mismatch"]},
+        "followed_by": {"$ref": "#/$defs/followed_by"}
+      },
+      "required": ["schema_sha256", "pinned_sha256", "result"],
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"const": "checksum_mismatch"}}, "required": ["result"]},
+          "then": {"required": ["followed_by"]}
+        },
+        {
+          "if": {"properties": {"result": {"const": "passed"}}, "required": ["result"]},
+          "then": {"properties": {"followed_by": false}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["pipeline", "behaviour_variant"]}}, "required": ["run_kind"]},
+          "then": {"properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "suspended"]}}}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {
+            "properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "counted", "stopped"]}}}}
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "kind_software_step": {
+      "description": "software_step (Run records 2.3): each run of the assembly step, the deterministic verifier, answer application and the final generation step.",
+      "properties": {
+        "step": {
+          "enum": ["assembly_step", "deterministic_verifier", "answer_application", "final_generation_step"],
+          "description": "Proposed name."
+        },
+        "software_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. The software version (Workflow 5.4, step 6)."
+        },
+        "inputs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ariadne_id"},
+          "description": "Proposed name. The artifact ids of its inputs, as named in files."
+        },
+        "outputs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ariadne_id"},
+          "description": "Proposed name. The artifact ids of its outputs, as named in files."
+        },
+        "result": {
+          "enum": ["passed", "failed"],
+          "description": "Proposed values. passed: the step finished and its self-check passed; failed: it could not finish or failed its self-check (Handoffs 2.2)."
+        },
+        "started_at": {"$ref": "#/$defs/utc_time"},
+        "ended_at": {"$ref": "#/$defs/utc_time"},
+        "withheld_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question_id": {"$ref": "#/$defs/question_id", "description": "Proposed name. The question the withheld answer item answers."},
+              "issue_ids": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"$ref": "#/$defs/issue_id"},
+                "description": "Proposed name. The issues the withheld answer item concerns."
+              }
+            },
+            "required": ["question_id", "issue_ids"],
+            "additionalProperties": false
+          },
+          "description": "For answer application: each answer item written to no field because accepted items of the round would write different content to the same field (Run records 2.3; Workflow 4.2, step 3)."
+        },
+        "rate_law_not_passed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question_id": {"$ref": "#/$defs/question_id", "description": "Proposed name. For an option from an answer: its question."},
+              "action_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. For an option from a structural edit: the edit."},
+              "issue_id": {"$ref": "#/$defs/issue_id", "description": "Proposed name. The rate-law issue."},
+              "option": {"type": "object", "description": "Proposed name. The option as given (Handoffs 2.9)."},
+              "failed_check": {
+                "enum": ["complete", "resolved", "one_context", "dimensions", "scale"],
+                "description": "Proposed name and values: the check of Issue format 3.1 (Rate-law bindings) that failed; dimensions also for a mass concentration or an activity per enzyme mass, whose stated value is kept and never converted (Issue format 0.8, 3.1, check 4); scale for quantities that must share a unit but are stated in units of different scale, or for a Hill n whose dimensionless unit does not have the scale 1, whose values and units are kept and never converted (Issue format 0.9, 3.1, check 5)."
+              }
+            },
+            "required": ["issue_id", "option", "failed_check"],
+            "oneOf": [{"required": ["question_id"]}, {"required": ["action_id"]}],
+            "additionalProperties": false
+          },
+          "description": "For answer application: each chosen rate-law option it did not pass on because a check of Issue format 3.1 (Rate-law bindings) failed (Run records 2.3; Workflow 4.2, steps 4 and 6; AD-D01)."
+        },
+        "error_detail": {"$ref": "#/$defs/file_ref", "description": "On a failure, the error detail."},
+        "followed_by": {"$ref": "#/$defs/followed_by"}
+      },
+      "required": ["step", "software_version", "inputs", "outputs", "result", "started_at", "ended_at"],
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"const": "failed"}}, "required": ["result"]},
+          "then": {"required": ["error_detail", "followed_by"]}
+        },
+        {
+          "if": {"properties": {"result": {"const": "passed"}}, "required": ["result"]},
+          "then": {"properties": {"error_detail": false, "followed_by": false}}
+        },
+        {
+          "if": {"properties": {"step": {"const": "answer_application"}}, "required": ["step"]},
+          "else": {"properties": {"withheld_items": false, "rate_law_not_passed": false}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["pipeline", "behaviour_variant"]}}, "required": ["run_kind"]},
+          "then": {"properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "suspended"]}}}}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["evaluation", "measurement"]}}, "required": ["run_kind"]},
+          "then": {
+            "properties": {"followed_by": {"properties": {"action": {"enum": ["rerun", "counted", "stopped"]}}}}
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "kind_state_change": {
+      "description": "state_change (Run records 2.3): every move of Workflow 3.1.",
+      "properties": {
+        "from_state": {
+          "$ref": "#/$defs/stage",
+          "description": "Proposed name. The state left; absent for row 1, the start."
+        },
+        "to_state": {"$ref": "#/$defs/stage", "description": "Proposed name. The state entered."},
+        "row": {"type": "integer", "minimum": 1, "description": "Proposed name. The row number of Workflow 3.1."},
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "check": {"type": "string", "minLength": 1, "description": "Proposed name."},
+              "result": {"enum": ["passed", "failed"], "description": "Proposed values."}
+            },
+            "required": ["check", "result"],
+            "additionalProperties": false
+          },
+          "description": "Proposed name. Each check of Workflow 3.3 that was evaluated, with its result. The files used are in files."
+        }
+      },
+      "required": ["to_state", "row"],
+      "allOf": [
+        {
+          "if": {"properties": {"row": {"const": 1}}, "required": ["row"]},
+          "then": {"properties": {"from_state": false}},
+          "else": {"required": ["from_state"]}
+        }
+      ],
+      "type": "object"
+    },
+    "kind_suspended": {
+      "description": "suspended (Run records 2.3; Workflow 4.4.3). The cause is named in cause, the round in round.",
+      "properties": {
+        "failed_stage": {"$ref": "#/$defs/stage", "description": "Proposed name. The failed stage."},
+        "counters": {"$ref": "#/$defs/counters", "description": "Proposed name."},
+        "last_snapshot": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The last round snapshot."}
+      },
+      "required": ["failed_stage", "counters"],
+      "type": "object"
+    },
+    "kind_unregistered_issue": {
+      "description": "unregistered_issue (Run records 2.3): an added issue that software does not register.",
+      "properties": {
+        "raiser_fields": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Proposed name. The added issue's raiser fields, as the verification agent wrote them (issue.schema.json, $defs/raiser_part)."
+        },
+        "routing": {"type": "string", "minLength": 1, "description": "Proposed name. The routing applied."}
+      },
+      "required": ["raiser_fields", "routing"],
+      "type": "object"
+    },
+    "limits": {
+      "type": "object",
+      "description": "The limit values in force for the attempt (Run records 2.4, limits), as the binding carries them.",
+      "properties": {
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "max_tokens on every request: the route's documented maximum under the development profile, the agent's frozen output cap under the evaluation profile (Run records 4.1)."
+        },
+        "max_iterations": {"type": "integer", "minimum": 1, "description": "Hermes's loop bound (Run records 4.6)."},
+        "wall_clock_guard": {"$ref": "#/$defs/utc_time", "description": "The wall-clock guard as an end time (Runtime 10.2)."},
+        "wall_clock_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The wall-clock guard's length in minutes, from the budget profile (Run records 2.4)."
+        },
+        "request_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The request guard under the development profile, or the frozen request cap under the evaluation profile (Runtime 10.2)."
+        },
+        "input_cap": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Evaluation profile only: the frozen input cap checked on the packet (Run records 4.10, row Input tokens)."
+        }
+      },
+      "required": ["max_tokens", "max_iterations", "wall_clock_guard", "wall_clock_minutes", "request_limit"],
+      "additionalProperties": false
+    },
+    "locator": {
+      "type": "object",
+      "description": "A locator (Issue format 2; Handoffs 2.1): an absolute XPath into the input and a verbatim quote of the node it selects.",
+      "properties": {
+        "xpath": {"type": "string", "minLength": 1},
+        "quote": {"type": "string", "minLength": 1}
+      },
+      "required": ["xpath", "quote"],
+      "additionalProperties": false
+    },
+    "object_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$(?![\\s\\S])",
+      "description": "The id of the object a live pointer addresses, its nearest ancestor with an id in the EnzymeML document (Issue format 2, Live pointer; Run records 2.3, Binding map), in the grammar of EnzymeML object ids: a letter, then at most 127 letters, digits or underscores, matching the whole string (design/HANDOFFS.md 2.1, rows EnzymeML object ids and Whole-string grammars). Software never fabricates one."
+    },
+    "origin": {
+      "type": "object",
+      "description": "The origin of what a person supplied (Run records 2.1, rows Answer originals and Approval originals): who sent it, when and how it arrived, and, for assisted entry, who entered it.",
+      "properties": {
+        "sent_by": {"type": "string", "minLength": 1, "description": "Proposed name. Who sent the reply."},
+        "received_at": {"$ref": "#/$defs/utc_time", "description": "Proposed name. When it arrived."},
+        "channel": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. How it arrived, for example e-mail, a filled form, or orally, as the note of the person who entered it says."
+        },
+        "entered_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only for assisted entry: the named person who entered it for its author (Run records 2.1; Issue format 6.3). Absent where the author entered it through software."
+        }
+      },
+      "required": ["sent_by", "received_at", "channel"],
+      "additionalProperties": false
+    },
+    "packet_manifest_part": {
+      "description": "The fields that Handoffs 2.4 (Packet manifest) lists, with the packet's file reference (Run records 2.3, packet_manifest). Handoffs 2.4 names only packet_sha256 and packet_sent_sha256; the other names here are proposed, except those that Handoffs 2.13, Run records 2.4 and Evaluation interfaces 3.3, 3.6 and 10.3 already use.",
+      "type": "object",
+      "properties": {
+        "agent": {"$ref": "#/$defs/agent"},
+        "attempt_id": {"$ref": "#/$defs/ariadne_id"},
+        "part": {"$ref": "#/$defs/part"},
+        "try": {"$ref": "#/$defs/try"},
+        "part_position": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Proposed name. For a part, its position (Handoffs 4.3)."
+        },
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/ariadne_id"},
+          "description": "Proposed name. For a part, the attempt ids of the parts it depends on."
+        },
+        "input_format": {"const": "strenda_export_xml", "description": "Proposed name. The input format (Handoffs 2.3)."},
+        "input_entry": {"$ref": "#/$defs/input_entry", "description": "Proposed name."},
+        "input_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The input's checksum as verified (Handoffs 2.3)."
+        },
+        "prompt_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "The prompt's artifact id (as in Evaluation interfaces 10.3)."
+        },
+        "prompt_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The prompt's version name, a label written by people (Roles 1.2)."
+        },
+        "prompt_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the prompt version (Handoffs 2.4; Roles 7.1, rule 7)."
+        },
+        "reference_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The reference text's artifact id."},
+        "reference_version": {"type": "string", "minLength": 1, "description": "The reference text's version."},
+        "reference_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the reference-text version (Handoffs 2.4; Roles 7.1, rule 7)."
+        },
+        "example_manifest_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The example manifest named for the attempt, for every packet; in zero-shot a zero-shot manifest that lists no example (Handoffs 2.4; Roles 7.6; Evaluation interfaces 3.3)."
+        },
+        "block_markers": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "HEADER",
+              "REFERENCE",
+              "EXAMPLES",
+              "INPUT",
+              "LINK NAMES",
+              "DRAFT",
+              "ISSUES",
+              "EARLIER",
+              "TECHNICAL NOTE"
+            ]
+          },
+          "additionalProperties": {"type": "string", "minLength": 1},
+          "description": "Proposed name. The block markers that software drew for this packet, by block (Roles 7.2)."
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/block"},
+          "allOf": [
+            {"contains": {"properties": {"block": {"const": "HEADER"}}, "required": ["block"]}},
+            {"contains": {"properties": {"block": {"const": "REFERENCE"}}, "required": ["block"]}}
+          ],
+          "description": "Proposed name. Each block with its size in bytes and its checksum. Every packet has HEADER and REFERENCE (Handoffs 2.4)."
+        },
+        "packet": {
+          "$ref": "#/$defs/file_ref",
+          "description": "Proposed name. The packet's file reference; its sha256 is packet_sha256, the packet's checksum as stored (Handoffs 2.4; Run records 2.4)."
+        },
+        "packet_sent_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the packet text as Hermes sends it, which the launcher registers at the model gateway (Handoffs 2.4; Run records 2.4; Runtime 10.3, step 2)."
+        }
+      },
+      "required": [
+        "agent",
+        "attempt_id",
+        "part",
+        "try",
+        "input_format",
+        "input_entry",
+        "input_sha256",
+        "prompt_id",
+        "prompt_version",
+        "prompt_sha256",
+        "reference_id",
+        "reference_version",
+        "reference_sha256",
+        "example_manifest_id",
+        "block_markers",
+        "blocks",
+        "packet",
+        "packet_sent_sha256"
+      ],
+      "allOf": [
+        {
+          "if": {"properties": {"part": {"const": "whole"}}, "required": ["part"]},
+          "then": {"properties": {"part_position": false, "depends_on": false}},
+          "else": {"required": ["part_position", "depends_on"]}
+        }
+      ]
+    },
+    "part": {
+      "type": "string",
+      "minLength": 1,
+      "description": "whole, or the part label of an extraction in parts (Handoffs 2.13 and 4.3)."
+    },
+    "placed_file": {
+      "type": "object",
+      "description": "One file placed in the packet (Evaluation interfaces 3.6, placed_files).",
+      "properties": {
+        "placed_as": {
+          "enum": [
+            "input",
+            "frozen_draft",
+            "frozen_evidence_entries",
+            "frozen_not_mapped_report",
+            "frozen_round_1_issues",
+            "frozen_judgments",
+            "example_file",
+            "earlier_output"
+          ],
+          "description": "Proposed name. Its part in the packet: input, frozen draft, frozen evidence entries, frozen not-mapped report, frozen round-1 issues, frozen judgments, example file, or, in mode B, an earlier output of the run (Evaluation interfaces 3.6)."
+        },
+        "folder": {"type": "string", "minLength": 1, "description": "Proposed name. The folder it was read from."},
+        "sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The checksum computed when the packet was built."
+        },
+        "compared_sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The checksum it was compared with."},
+        "compared_with": {"$ref": "#/$defs/compared_with", "description": "Proposed name."}
+      },
+      "required": ["placed_as", "folder", "sha256", "compared_sha256", "compared_with"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"placed_as": {"const": "input"}}, "required": ["placed_as"]},
+          "then": {"properties": {"compared_with": {"enum": ["input_set_manifest", "variant_list"]}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "placed_as": {
+                "enum": [
+                  "frozen_draft",
+                  "frozen_evidence_entries",
+                  "frozen_not_mapped_report",
+                  "frozen_round_1_issues",
+                  "frozen_judgments"
+                ]
+              }
+            },
+            "required": ["placed_as"]
+          },
+          "then": {"properties": {"compared_with": {"const": "item_list"}}}
+        },
+        {
+          "if": {"properties": {"placed_as": {"const": "example_file"}}, "required": ["placed_as"]},
+          "then": {"properties": {"compared_with": {"const": "example_manifest"}}}
+        },
+        {
+          "if": {"properties": {"placed_as": {"const": "earlier_output"}}, "required": ["placed_as"]},
+          "then": {"properties": {"compared_with": {"const": "run_log"}}}
+        }
+      ]
+    },
+    "pointer": {
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)*$",
+      "description": "A JSON Pointer into the EnzymeML document, for example /measurements/0/ph (Issue format 2). For software only; scientists never see pointers."
+    },
+    "pointer_owner": {
+      "enum": ["issue", "evidence", "parameter_link"],
+      "description": "What holds the live pointer: an issue's fields, an evidence entry of the current record, or a parameter link (Run records 2.3)."
+    },
+    "question_id": {
+      "type": "string",
+      "pattern": "^Q-[0-9]{3,}$(?![\\s\\S])",
+      "description": "A question id: Q-001 and so on (Issue format 5.1). Written by software."
+    },
+    "requests_summary": {
+      "type": "object",
+      "description": "Requests of an attempt (Run records 2.4, requests). Not expressed here: that first, retry and continuation add up to forwarded, and that unclassifiable is at most refused.",
+      "properties": {
+        "forwarded": {"type": "integer", "minimum": 0, "description": "Proposed name. Requests the gateway forwarded."},
+        "refused": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. Requests the gateway refused, counted apart and never as forwarded (Run records 4.2)."
+        },
+        "by_class": {
+          "type": "object",
+          "description": "Proposed name. Requests by class (Runtime 11.3): the forwarded requests as first, retry and continuation, which add up to forwarded, and the refused requests of class unclassifiable, which are counted among refused too and against the request guard or the frozen request cap (Run records 2.4 and 2.5). A refused request of another class is counted in refused only.",
+          "properties": {
+            "first": {"type": "integer", "minimum": 0},
+            "retry": {"type": "integer", "minimum": 0},
+            "continuation": {"type": "integer", "minimum": 0},
+            "unclassifiable": {"type": "integer", "minimum": 0}
+          },
+          "required": ["first", "retry", "continuation", "unclassifiable"],
+          "additionalProperties": false
+        },
+        "request_log_range": {
+          "type": "object",
+          "description": "Proposed name. Attempt entries only: the attempt's range in the request log (request, response and status entries), by the entries' seq; absent when the attempt has no entry in the request log.",
+          "properties": {
+            "first_seq": {"type": "integer", "minimum": 1, "description": "Proposed name."},
+            "last_seq": {"type": "integer", "minimum": 1, "description": "Proposed name."}
+          },
+          "required": ["first_seq", "last_seq"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["forwarded", "refused", "by_class"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$comment": "Run records 2.4 and 2.5: an unclassifiable request is always refused, so there is none where nothing was refused.",
+          "if": {"properties": {"refused": {"const": 0}}, "required": ["refused"]},
+          "then": {"properties": {"by_class": {"properties": {"unclassifiable": {"const": 0}}}}}
+        }
+      ]
+    },
+    "run_kind": {
+      "enum": ["pipeline", "evaluation", "measurement", "containment", "behaviour_variant"],
+      "description": "What kind of run the entry belongs to (Run records 2.3): pipeline; evaluation (the runs of an evaluation batch, development batches included); measurement (the runs of a measurement batch, never scored); containment (a containment suite run and its test runs, Containment 2.6); behaviour_variant (a behaviour-variant run of the prompt-injection tests, never scored and never measured). In a batch log, the batch's kind, evaluation or measurement."
+    },
+    "served_model": {
+      "type": "object",
+      "description": "The served model the provider reported (Run records 2.4; Evaluation interfaces 10.2 and 10.3).",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1},
+          "description": "Proposed name. The served-model ids the provider reported."
+        },
+        "not_reported": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. Forwarded requests whose response reported no served-model id, for example a cut stream or a response that never arrived; never flagged as a different model."
+        },
+        "flagged": {
+          "type": "boolean",
+          "description": "Proposed name. true when a reported id differs from the route's model; the run is listed for review (Evaluation interfaces 10.2 and 11, rule 3)."
+        }
+      },
+      "required": ["ids", "not_reported", "flagged"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"flagged": {"const": true}}, "required": ["flagged"]},
+          "then": {"properties": {"ids": {"minItems": 1}}}
+        }
+      ]
+    },
+    "source": {
+      "enum": [
+        "workflow_controller",
+        "launcher",
+        "runner",
+        "assembly_step",
+        "deterministic_verifier",
+        "answer_application",
+        "final_generation_step",
+        "model_gateway",
+        "monitor_collector"
+      ],
+      "description": "Proposed values. The component whose facts the entry records (Run records 2.3): the workflow controller, the launcher, the runner (through result.json), the assembly step, the deterministic verifier, answer application, the final generation step, the model gateway, or a monitor through the monitor collector."
+    },
+    "stage": {
+      "enum": [
+        "intake",
+        "extracting",
+        "assembling",
+        "deterministic_check",
+        "verification",
+        "inquiry",
+        "awaiting_answers",
+        "applying_answers",
+        "final_generation",
+        "approval_ready",
+        "approved",
+        "not_approvable",
+        "suspended_technical",
+        "failed_technical",
+        "withdrawn"
+      ],
+      "description": "Proposed values: the 15 states of Workflow 2, in snake case."
+    },
+    "stop_cause": {
+      "type": "object",
+      "description": "What stopped it: the code, or, where none applies, the result of the check, or the software step that failed (Run records 2.3; Evaluation interfaces 10.1 and 10.4). Exactly one.",
+      "properties": {
+        "code": {"$ref": "#/$defs/code"},
+        "check_result": {"$ref": "#/$defs/check_result", "description": "Proposed name."},
+        "software_step": {
+          "enum": ["assembly_step", "deterministic_verifier", "answer_application", "final_generation_step"],
+          "description": "A software step that could not finish or failed its self-check (Evaluation interfaces 10.4)."
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [{"required": ["code"]}, {"required": ["check_result"]}, {"required": ["software_step"]}]
+    },
+    "try": {"enum": ["first", "technical_rerun"], "description": "The try (Handoffs 2.13; D14 A)."},
+    "tuning_disclosure": {
+      "type": "object",
+      "description": "The tuning disclosure that Tillman Heisner records before a held-out assessment, with the key names that Evaluation interfaces 4.8 proposes: whether information from its test entries, their outputs or their scores informed tuning of the workflow being assessed. Software checks that it is present and reports what it says; it cannot show that no information was used. Where it says so, assessment on the entries it names is reported as not held out for that workflow, whatever its version number (Evaluation interfaces 6, rule 9, and 10.7).",
+      "properties": {
+        "test_information_used": {"type": "boolean", "description": "true when such information informed tuning."},
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1},
+          "description": "With test_information_used true: the test entries concerned, by STRENDA DB identifier, as the input-set manifest names them (Evaluation interfaces 3.1)."
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1},
+          "description": "With test_information_used true: the changes that the information informed, in plain words."
+        },
+        "recorded_by": {"type": "string", "minLength": 1, "description": "The named person who recorded it."},
+        "recorded_at": {"$ref": "#/$defs/utc_time", "description": "When it was recorded, before the batch started."}
+      },
+      "required": ["test_information_used", "recorded_by", "recorded_at"],
+      "additionalProperties": false,
+      "if": {"properties": {"test_information_used": {"const": true}}, "required": ["test_information_used"]},
+      "then": {"required": ["entries", "changes"]},
+      "else": {"properties": {"entries": false, "changes": false}}
+    },
+    "usage_flags": {
+      "$comment": "Run records 4.3 and 4.4, rules 1 and 2: for each usage category, a total over forwarded requests that lacks the category carries it in usage_unknown.categories; a missing count is never silent and never zero. A reported count may stand beside its flag, provisional. With no forwarded request nothing can be unknown, and the rule does not apply.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "input_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "input_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "cache_write_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "cache_write_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "cache_read_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "cache_read_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "output_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "output_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "reasoning_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "reasoning_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "usage_totals": {
+      "type": "object",
+      "description": "Token totals over the forwarded requests, from the counts the provider reported, incomplete ones included (Run records 2.4 and 4.3). A category with no reported count on any request is absent, never zero; usage_unknown says which categories are missing or incomplete and on how many requests, and a total of such a category is provisional, never final, and never sets or calibrates a token cap (Run records 4.4, rules 1 to 3).",
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0, "description": "Uncached input tokens."},
+        "cache_write_tokens": {"type": "integer", "minimum": 0, "description": "Cache-write tokens."},
+        "cache_read_tokens": {"type": "integer", "minimum": 0, "description": "Cache-read tokens."},
+        "input_total_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. Uncached input plus cache writes plus cache reads, each counted once (Run records 4.2)."
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "All generated tokens, reasoning included (Run records 4.2)."
+        },
+        "reasoning_tokens": {
+          "anyOf": [{"type": "integer", "minimum": 0}, {"const": "not_reported"}],
+          "description": "The reasoning share of the output where the provider reports it separately; otherwise not_reported, never zero (Run records 4.2 and 4.4, rule 4)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "usage_unknown_summary": {
+      "type": "object",
+      "description": "The unknown-usage flag that travels with totals (Run records 4.3 and 4.4): a total that includes a missing or incomplete count carries it and is provisional. A missing count is never written as zero.",
+      "properties": {
+        "categories": {
+          "type": "object",
+          "propertyNames": {
+            "enum": ["input_tokens", "cache_write_tokens", "cache_read_tokens", "output_tokens", "reasoning_tokens"]
+          },
+          "additionalProperties": {"type": "integer", "minimum": 1},
+          "description": "Proposed name. Each usage category that is missing or incomplete on any request, with the number of requests on which it is."
+        },
+        "requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. The number of requests with any missing or incomplete usage category; 0 when usage is complete."
+        }
+      },
+      "required": ["categories", "requests"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"requests": {"const": 0}}, "required": ["requests"]},
+          "then": {"properties": {"categories": {"maxProperties": 0}}},
+          "else": {"properties": {"categories": {"minProperties": 1}}}
+        }
+      ]
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}

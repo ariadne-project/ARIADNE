@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:question:v0.7",
+  "title": "Question",
+  "description": "Derived from ISSUE_FORMAT.md 0.7; the document wins. One question as stored (section 5.1), with the ids and round that software adds.",
+  "$comment": "Derived from ISSUE_FORMAT.md 0.7; the document wins. Not expressed here: that every tagged issue exists and may be asked (5.1 rule 2), the standard closing options (5.1, Options item 2), the grouped rate-law question (5.1 rule 3), which options of a question are rate-law options (that needs the tagged issues), whether a rate-law option passes the checks of 3.1 (Rate-law bindings), and the plain-language rule (5.3). The shape of a rate-law option's value, with the proposed key names of design/HANDOFFS.md 2.9, is $defs/rate_law_option_value, for the question-round file to use. In design/HANDOFFS.md 2.9 the closing options and the grouping are content checks. 5.1 itself fixes no value for the closing options; design/HANDOFFS.md 2.9 fixes the values free_entry (\"A different value\") and does_not_fit (\"The question does not fit\"), as in the example, which comes from Issue format 10.1. That is a design rule (not part of Issue format), and this file does not express it.",
+  "type": "object",
+  "properties": {
+    "question_id": {
+      "$ref": "#/$defs/question_id",
+      "description": "Written by software. Q-001 and so on."
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Written by software. The round of the question."
+    },
+    "issue_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/issue_id"},
+      "description": "Written by the inquiry agent. Hidden tags; at least one. The fields follow from the issues."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Written by the inquiry agent. Plain language (Issue format 5.3): no pointers, ids or EnzymeML field names."
+    },
+    "answer_type": {
+      "enum": ["value", "choose_one"],
+      "description": "Written by the inquiry agent. value: free entry (a number with unit, text, or a list). choose_one: a choice among the options."
+    },
+    "options": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/option"},
+      "description": "Written by the inquiry agent; required for choose_one. List of {label, value}."
+    }
+  },
+  "required": ["question_id", "round", "issue_ids", "text", "answer_type"],
+  "additionalProperties": false,
+  "allOf": [{"$ref": "#/$defs/options_for_choose_one"}],
+  "$defs": {
+    "issue_id": {
+      "type": "string",
+      "pattern": "^ISS-[0-9]{3,}$(?![\\s\\S])",
+      "description": "An issue id: ISS-001 and so on (Issue format 4). Written by software, never by an agent."
+    },
+    "question_id": {
+      "type": "string",
+      "pattern": "^Q-[0-9]{3,}$(?![\\s\\S])",
+      "description": "A question id: Q-001 and so on (Issue format 5.1). Written by software."
+    },
+    "option": {
+      "type": "object",
+      "description": "One option {label, value} (Issue format 5.1, Options).",
+      "properties": {
+        "label": {"type": "string", "minLength": 1, "description": "What the scientist reads."},
+        "value": {"description": "The value the option stands for; any JSON value."}
+      },
+      "required": ["label", "value"],
+      "additionalProperties": false
+    },
+    "object_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$(?![\\s\\S])",
+      "description": "An EnzymeML object id: a letter, then at most 127 letters, digits or underscores, matching the whole string (design/HANDOFFS.md 2.1, rows EnzymeML object ids and Whole-string grammars)."
+    },
+    "rate_law_option_value": {
+      "type": "object",
+      "description": "The value of a fully bound rate-law option (Issue format 5.1, rule 3; 3.1, Rate-law bindings), with the proposed key names of design/HANDOFFS.md 2.9: the model, the target reaction, the measurement whose context applies, and the ids bound to each argument and species variable. The label shows names, never these ids (5.3).",
+      "properties": {
+        "model": {"type": "string", "minLength": 1, "description": "Proposed name. The model's name from the starter list."},
+        "reaction_id": {"$ref": "#/$defs/object_id", "description": "Proposed name."},
+        "measurement_id": {"$ref": "#/$defs/object_id", "description": "Proposed name."},
+        "parameters": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/object_id"},
+          "description": "Proposed name. From each argument the model needs, as the starter list names it, to a parameter id."
+        },
+        "species": {
+          "type": "object",
+          "properties": {"S": {"$ref": "#/$defs/object_id"}, "E": {"$ref": "#/$defs/object_id"}},
+          "required": ["S"],
+          "additionalProperties": false,
+          "description": "Proposed name. From each species variable to a species id."
+        }
+      },
+      "required": ["model", "reaction_id", "measurement_id", "parameters", "species"],
+      "additionalProperties": false
+    },
+    "options_for_choose_one": {
+      "$comment": "Issue format 5.1: options are required for choose_one.",
+      "if": {"properties": {"answer_type": {"const": "choose_one"}}, "required": ["answer_type"]},
+      "then": {"required": ["options"]}
+    },
+    "inquiry_agent_part": {
+      "type": "object",
+      "description": "The fields of a question that the inquiry agent writes (Issue format 5.1, 'Written by'), before software adds question_id and round. For the question-round file of design/HANDOFFS.md 2.9.",
+      "properties": {
+        "issue_ids": {"$ref": "#/properties/issue_ids"},
+        "text": {"$ref": "#/properties/text"},
+        "answer_type": {"$ref": "#/properties/answer_type"},
+        "options": {"$ref": "#/properties/options"}
+      },
+      "required": ["issue_ids", "text", "answer_type"],
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/options_for_choose_one"}]
+    }
+  },
+  "examples": [
+    {
+      "question_id": "Q-004",
+      "round": 1,
+      "issue_ids": ["ISS-021"],
+      "text": "Both datasets give the assay pH as 7.8, but the methods text says '20mM HEPES pH 7.4'. Which pH was used in the assays?",
+      "answer_type": "choose_one",
+      "options": [
+        {"label": "7.8 (dataset values)", "value": 7.8},
+        {"label": "7.4 (methods text)", "value": 7.4},
+        {"label": "A different value: ...", "value": "free_entry"},
+        {"label": "The question does not fit: ...", "value": "does_not_fit"}
+      ]
+    }
+  ]
+}

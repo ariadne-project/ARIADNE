@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:report-index-line:v1.3",
+  "title": "Report-index line",
+  "description": "Derived from design/RUN_RECORDS.md 1.3; the document wins. Draft. One line of containment-reports.jsonl, the report index (sections 2.2 and 2.7): software's append-only index of containment reports at the top of the storage location. A line is a report line, a hit line, or a monitor hold, repair or release line (line_kind; AD-D06; the repair line decided on 2026-10-28). The workflow controller of a suite run appends the run's report line when it stores the report; the workflow controller of a real run appends a hit line for each containment_hit it records, and the monitor hold and release lines of its execution environment; the workflow controller also appends the repair line of a monitoring repair that a named person records independently of any run, and the release line that software appends after a readiness check that passed; the admission check reads only this index and the report file a report line names.",
+  "$comment": "Derived from design/RUN_RECORDS.md 1.3; the document wins. Section 2.7 lists what a line holds and names seq and entry_id; line_kind with its values report and containment_hit, and the value monitor_repair, are proposed names, while the values monitor_hold and monitor_release and the key environment were accepted on 2026-10-28; the other names here are proposed. The index is a run-log file, so its checksums are kept in the run log only (sections 1.2 and 2.9; D13 A). Each line carries seq and entry_id (section 2.7). Not expressed here: that seq runs without gaps across the index and that entry ids are unique within it; that the report file's checksum matches report_sha256; that 'the most recent report bound to the same manifest' is the last report line for that manifest checksum, and that a later hit line for that checksum denies admission (Run records 2.7; Containment 12.4); that a repair line names an outstanding hold; that a release line names the latest hold of its environment and that its readiness check came after that hold, so that a hold appended after a repair or a check is not ended by it (Containment 12.4; MH-10). The admission tests AD-01 to AD-05 and the monitor health tests MH-07 to MH-11 read a fixture copy of the index, never the index itself (Run records 2.7). The examples are illustrative: ids, times, checksums, sizes, counts and names are made up. The hit line of the second example is under another runtime manifest than the report line of the first, so that it blocks no run under the first manifest (Containment 12.4, after a containment hit; D27 B), and its time lies after the end of batch BAT-0007 (2026-11-20T15:42:10Z), the latest time of that day in the other files, so that no two machine steps overlap (Workflow 1.3, rule 2). The report line that admitted its run under that manifest is not shown. The last three examples are a hold after a missed end-of-observation deadline, for a run that has since ended, a monitoring repair that a named person recorded independently of any run, and the release that software appended after the readiness check passed.",
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The line's position in the index, counted from 1 over the whole index, without gaps (Run records 2.7; 2.10, rule 2)."
+    },
+    "entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Written by software, unique within the index (Run records 2.7)."
+    },
+    "line_kind": {
+      "enum": ["report", "containment_hit", "monitor_hold", "monitor_repair", "monitor_release"],
+      "description": "Proposed name. report for a report line; containment_hit for a hit line, appended for each containment_hit in a real run by the workflow controller that recorded it; monitor_hold and monitor_release, values accepted on 2026-10-28, for the monitor hold of an execution environment and its release; monitor_repair, a proposed value, for a monitoring repair that a named person records independently of any run (Run records 2.7; Containment 12.4; AD-D06)."
+    },
+    "report_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The report id."},
+    "report_sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The report's checksum."},
+    "runtime_manifest_sha256": {"$ref": "#/$defs/checksum", "description": "The runtime-manifest checksum the report is bound to."},
+    "status": {
+      "enum": ["VERIFIED", "FAILED"],
+      "description": "The report's status (Containment 12.1). STALE is not stored: it is found at admission."
+    },
+    "stored_at": {"$ref": "#/$defs/utc_time", "description": "Proposed name. When the report was stored."},
+    "suite_run_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The suite run's id."},
+    "report_artifact_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The report's artifact id."},
+    "run_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. Hit lines: the real run in which the hit was recorded."},
+    "attempt_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. Hit lines: the attempt whose attempt_ended entry recorded the hit."},
+    "hit_recorded_at": {
+      "$ref": "#/$defs/utc_time",
+      "description": "Proposed name. Hit lines: the time of the attempt_ended entry that recorded the hit."
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Monitor lines: the execution environment, as the launcher's configuration names it (Run records 2.4 and 2.7)."
+    },
+    "monitors": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["M1", "M2", "M3", "collector"]},
+      "description": "Proposed name. Hold lines: the monitors, or the collector, concerned."
+    },
+    "reason": {
+      "enum": ["not_ready", "failed", "events_lost", "end_not_observed"],
+      "description": "Proposed name and values. Hold lines: why the monitoring evidence was incomplete (Run records 2.7); a monitor not ready by the readiness deadline is not_ready, and an end of observation not confirmed by the end-of-observation deadline is end_not_observed (Runtime 10.3, steps 3 and 8)."
+    },
+    "recorded_at": {"$ref": "#/$defs/utc_time", "description": "Proposed name. Monitor lines: when the line was appended."},
+    "fix_entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Proposed name. Release lines: the entry that recorded the fix, a human_act resume in the run log of run_id, or the fix entry in the batch log of batch_id (Run records 2.3 and 2.7); absent where a repair line recorded the fix (repair_entry_id)."
+    },
+    "batch_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Proposed name. Release lines: the batch whose batch log holds the fix entry, in place of run_id."
+    },
+    "readiness_checked_at": {
+      "$ref": "#/$defs/utc_time",
+      "description": "Proposed name. Repair and release lines: when software ran the readiness check after the repair or the fix; for a release line, the check that passed, made after the hold it ends."
+    },
+    "hold_entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Proposed name. Repair and release lines: the entry id of the hold line that the repair addresses or the release ends, the latest hold of the environment (Run records 2.7; Containment 12.4)."
+    },
+    "repair_entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Proposed name. Release lines after a monitoring repair: the entry id of the repair line that recorded the fix, in place of fix_entry_id."
+    },
+    "repaired_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. Repair lines: the named person who recorded the repair. A person never records a release."
+    },
+    "repaired_at": {"$ref": "#/$defs/utc_time", "description": "Proposed name. Repair lines: the time of the repair, as the person gives it."},
+    "repair_note": {"type": "string", "minLength": 1, "description": "Proposed name. Repair lines: the explanation of what was repaired."},
+    "readiness_result": {
+      "enum": ["passed", "failed"],
+      "description": "Proposed name and values. Repair lines: the result of the readiness check that software ran after the repair; after failed, the hold stays and no release line follows."
+    }
+  },
+  "required": ["seq", "entry_id", "line_kind"],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "description": "A report line (Run records 2.7).",
+      "properties": {
+        "line_kind": {"const": "report"},
+        "batch_id": false,
+        "run_id": false,
+        "attempt_id": false,
+        "hit_recorded_at": false,
+        "environment": false,
+        "monitors": false,
+        "reason": false,
+        "recorded_at": false,
+        "fix_entry_id": false,
+        "readiness_checked_at": false,
+        "hold_entry_id": false,
+        "repair_entry_id": false,
+        "repaired_by": false,
+        "repaired_at": false,
+        "repair_note": false,
+        "readiness_result": false
+      },
+      "required": ["runtime_manifest_sha256", "report_id", "report_sha256", "status", "stored_at", "suite_run_id", "report_artifact_id"]
+    },
+    {
+      "description": "A hit line (Run records 2.7): the runtime-manifest checksum under which the containment_hit was recorded.",
+      "properties": {
+        "line_kind": {"const": "containment_hit"},
+        "batch_id": false,
+        "report_id": false,
+        "report_sha256": false,
+        "status": false,
+        "stored_at": false,
+        "suite_run_id": false,
+        "report_artifact_id": false,
+        "environment": false,
+        "monitors": false,
+        "reason": false,
+        "recorded_at": false,
+        "fix_entry_id": false,
+        "readiness_checked_at": false,
+        "hold_entry_id": false,
+        "repair_entry_id": false,
+        "repaired_by": false,
+        "repaired_at": false,
+        "repair_note": false,
+        "readiness_result": false
+      },
+      "required": ["runtime_manifest_sha256", "run_id", "attempt_id", "hit_recorded_at"]
+    },
+    {
+      "description": "A monitor hold line (Run records 2.7; Containment 12.4; AD-D06): no attempt is admitted on the environment until a release line follows. It is no hit line, and D27 B does not apply.",
+      "properties": {
+        "line_kind": {"const": "monitor_hold"},
+        "batch_id": false,
+        "report_id": false,
+        "report_sha256": false,
+        "status": false,
+        "stored_at": false,
+        "suite_run_id": false,
+        "report_artifact_id": false,
+        "hit_recorded_at": false,
+        "fix_entry_id": false,
+        "readiness_checked_at": false,
+        "hold_entry_id": false,
+        "repair_entry_id": false,
+        "repaired_by": false,
+        "repaired_at": false,
+        "repair_note": false,
+        "readiness_result": false
+      },
+      "required": ["environment", "run_id", "monitors", "reason", "recorded_at"]
+    },
+    {
+      "description": "A monitor repair line (Run records 2.7; Containment 12.4; decided on 2026-10-28): a named person recorded a monitoring repair for the environment, independently of any run or batch, and software ran a readiness check after it. It ends no hold by itself; only a release line, which software appends after a check that passed, does.",
+      "properties": {
+        "line_kind": {"const": "monitor_repair"},
+        "batch_id": false,
+        "run_id": false,
+        "attempt_id": false,
+        "report_id": false,
+        "report_sha256": false,
+        "status": false,
+        "stored_at": false,
+        "suite_run_id": false,
+        "report_artifact_id": false,
+        "hit_recorded_at": false,
+        "monitors": false,
+        "reason": false,
+        "runtime_manifest_sha256": false,
+        "fix_entry_id": false,
+        "repair_entry_id": false
+      },
+      "required": ["environment", "hold_entry_id", "repaired_by", "repaired_at", "repair_note", "readiness_checked_at", "readiness_result", "recorded_at"]
+    },
+    {
+      "description": "A monitor release line (Run records 2.7; Containment 12.4; AD-D06): the fix is recorded, by a resume, a batch's fix entry or a repair line, and the monitors passed a readiness check made after the hold it ends. Software appends it; a person never does.",
+      "properties": {
+        "line_kind": {"const": "monitor_release"},
+        "report_id": false,
+        "report_sha256": false,
+        "status": false,
+        "stored_at": false,
+        "suite_run_id": false,
+        "report_artifact_id": false,
+        "hit_recorded_at": false,
+        "attempt_id": false,
+        "monitors": false,
+        "reason": false,
+        "runtime_manifest_sha256": false,
+        "repaired_by": false,
+        "repaired_at": false,
+        "repair_note": false,
+        "readiness_result": false
+      },
+      "required": ["environment", "hold_entry_id", "readiness_checked_at", "recorded_at"],
+      "oneOf": [
+        {"required": ["fix_entry_id", "run_id"], "properties": {"batch_id": false, "repair_entry_id": false}},
+        {"required": ["fix_entry_id", "batch_id"], "properties": {"run_id": false, "repair_entry_id": false}},
+        {"required": ["repair_entry_id"], "properties": {"fix_entry_id": false, "run_id": false, "batch_id": false}}
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "seq": 4,
+      "entry_id": "IX-0004",
+      "line_kind": "report",
+      "report_id": "CR-0004",
+      "report_sha256": "975b9214a2955844617311c5601f83298a2ba64654047f68ef527792cea37308",
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "status": "VERIFIED",
+      "stored_at": "2026-11-18T16:40:00Z",
+      "suite_run_id": "RUN-0090",
+      "report_artifact_id": "AR-0901"
+    },
+    {
+      "seq": 5,
+      "entry_id": "IX-0005",
+      "line_kind": "containment_hit",
+      "runtime_manifest_sha256": "b2f4c6e8a0d2f4b6c8e0a2d4f6b8c0e2a4d6f8b0c2e4a6d8f0b2c4e6a8d0f2b4",
+      "run_id": "RUN-0131",
+      "attempt_id": "ATT-0412",
+      "hit_recorded_at": "2026-11-20T16:10:00Z"
+    },
+    {
+      "seq": 6,
+      "entry_id": "IX-0006",
+      "line_kind": "monitor_hold",
+      "environment": "host-a",
+      "run_id": "RUN-0140",
+      "attempt_id": "ATT-0433",
+      "monitors": ["M3"],
+      "reason": "events_lost",
+      "recorded_at": "2026-11-21T10:12:00Z"
+    },
+    {
+      "seq": 7,
+      "entry_id": "IX-0007",
+      "line_kind": "monitor_release",
+      "environment": "host-a",
+      "hold_entry_id": "IX-0006",
+      "run_id": "RUN-0140",
+      "fix_entry_id": "E-0052",
+      "readiness_checked_at": "2026-11-21T15:30:00Z",
+      "recorded_at": "2026-11-21T15:31:00Z"
+    },
+    {
+      "seq": 8,
+      "entry_id": "IX-0008",
+      "line_kind": "monitor_hold",
+      "environment": "host-b",
+      "run_id": "RUN-0141",
+      "attempt_id": "ATT-0440",
+      "monitors": ["collector"],
+      "reason": "end_not_observed",
+      "recorded_at": "2026-11-22T09:05:00Z"
+    },
+    {
+      "seq": 9,
+      "entry_id": "IX-0009",
+      "line_kind": "monitor_repair",
+      "environment": "host-b",
+      "hold_entry_id": "IX-0008",
+      "repaired_by": "<named person>",
+      "repaired_at": "2026-11-22T13:40:00Z",
+      "repair_note": "Restarted the monitor collector and replaced its full event buffer.",
+      "readiness_checked_at": "2026-11-22T13:45:00Z",
+      "readiness_result": "passed",
+      "recorded_at": "2026-11-22T13:46:00Z"
+    },
+    {
+      "seq": 10,
+      "entry_id": "IX-0010",
+      "line_kind": "monitor_release",
+      "environment": "host-b",
+      "hold_entry_id": "IX-0008",
+      "repair_entry_id": "IX-0009",
+      "readiness_checked_at": "2026-11-22T13:45:00Z",
+      "recorded_at": "2026-11-22T13:46:30Z"
+    }
+  ],
+  "$defs": {
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}

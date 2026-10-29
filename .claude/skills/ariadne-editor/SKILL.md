@@ -1,6 +1,6 @@
 ---
 name: ariadne-editor
-description: Helps ARIADNE core editors work with this repository - record new provenance-ledger entries, correct earlier ones, check the ledger format, and commit, push, or open a pull request safely. Use it whenever the user wants to add, record, log, or note something in the ledger (a decision, proposal, observation, user report, result, or correction), update the project documents (README, CONTRIBUTING, PILOT, ARCHITECTURE, OPEN_QUESTIONS), resolve an open question, check that the ledger is valid, or commit/push/publish changes to the ARIADNE repo - even if they don't say "ledger", "skill", or "git".
+description: Helps ARIADNE core editors work with this repository - record new provenance-ledger entries, correct earlier ones, check the ledger format, and commit, push, or open a pull request safely. Use it whenever the user wants to add, record, log, or note something in the ledger (a decision, proposal, observation, user report, result, or correction), update the project documents (README, CONTRIBUTING, PILOT, ARCHITECTURE, OPEN_QUESTIONS, ISSUE_FORMAT, and the documents in design/), resolve an open question, check that the ledger is valid, or commit/push/publish changes to the ARIADNE repo - even if they don't say "ledger", "skill", or "git".
 ---
 
 # ARIADNE editor
@@ -95,7 +95,7 @@ Never edit the original; the ledger's value is that history stays visible.
 
 ### 4. Other document changes
 
-For edits to README text outside the ledger, CONTRIBUTING, PILOT, ARCHITECTURE, or OPEN_QUESTIONS: keep each change focused, keep the careful "proposed, not implemented" language, and use plain hyphens (` - `), not em dashes, in headings. When an open question in `OPEN_QUESTIONS.md` is answered, also record the answer as a ledger entry (usually `Decision` or `Proposal`, following the rules above) so the ledger stays the record of how the project developed.
+For edits to README text outside the ledger, CONTRIBUTING, PILOT, ARCHITECTURE, OPEN_QUESTIONS, ISSUE_FORMAT, or the documents in `design/`: keep each change focused, keep the careful "proposed, not implemented" language, and use plain hyphens (` - `), not em dashes, in headings. A change to a rule of `ISSUE_FORMAT.md` is a new version of the format and is recorded by its own ledger `Decision`; the design documents link its rules and never restate them. When an open question in `OPEN_QUESTIONS.md` is answered, also record the answer as a ledger entry (usually `Decision` or `Proposal`, following the rules above) so the ledger stays the record of how the project developed.
 
 ### 5. Ship: commit and publish
 

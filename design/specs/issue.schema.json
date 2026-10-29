@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:issue:v0.8",
+  "title": "Issue",
+  "description": "Derived from ISSUE_FORMAT.md 0.8; the document wins. One issue as the record's issue list holds it: the fields of section 4, the kinds and raisers of section 4.1, and the registration rule of section 4.2 rule 2.",
+  "$comment": "Derived from ISSUE_FORMAT.md 0.8; the document wins. Not expressed here, because a schema sees one issue only: that each pointer in fields, or its parent, exists in the record (4.2 rule 2; for a parameter-link issue, the parameter's pointer, 4.1 note 5); the Locator rule for source_locators (absolute XPath 1.0, exactly one node, verbatim quote), because checking it needs the input; that all fields of one issue take the same value; which issues an override may close (6.1: wrong_type, broken_reference and bad_citation, and any issue on a SOFTWARE field), because whether a field is a SOFTWARE field needs the role table of section 3, so this is a software check and closed_by override is allowed here for every kind except missing_optional, which is raised only at LIST fields and so is never closed by an override (last allOf entry). closed_by is present only while an issue is closed (section 4), as version 0.8 settles the point that D30 A carried: it is required for a closed issue and refused on an open, unavailable or held one; when an issue reopens or becomes unavailable, software removes it, and the stored history of the issue list keeps the earlier closure (7.1, On re-check; design/RUN_RECORDS.md 2.3, issue_list). Also not expressed, because a schema sees one issue only: that each pointer still addresses the object id it is bound to (7.1, Live pointers), which software checks before use; and the status a held issue had before it was held (open or unavailable), to which it returns once a named person maps it (6.2), which the run log keeps (design/RUN_RECORDS.md 2.3, issue_list). Any kind may be held.",
+  "type": "object",
+  "properties": {
+    "issue_id": {
+      "$ref": "#/$defs/issue_id",
+      "description": "Written by software. ISS-001 and so on. Never chosen by an agent; never reused within a record."
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Written by software. The round in which the issue was raised. Round 1 starts from the extraction agent's draft (Issue format 2)."
+    },
+    "raised_by": {
+      "enum": ["deterministic_verifier", "verification_agent"],
+      "description": "Written by software."
+    },
+    "kind": {
+      "$ref": "#/$defs/kind",
+      "description": "Written by the raiser. One of ten kinds (Issue format 4.1)."
+    },
+    "rule_id": {
+      "enum": [
+        "R-REC",
+        "R-ID-PROTEIN",
+        "R-ID-MOLECULE",
+        "R-CTX-UNIT",
+        "R-CTX-DATA",
+        "R-CTX-LAW",
+        "R-CTX-RXN",
+        "C-SCHEMA",
+        "C-REF",
+        "C-CITE",
+        "C-UNIT"
+      ],
+      "description": "Written by the raiser; optional. The rule or check that raised it: R-* from Issue format 3, C-* from Issue format 8. Issues added by the verification agent have none."
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/pointer"},
+      "description": "Written by the raiser. Unordered set of pointers. While the issue is not closed they are live pointers, which software binds to the ids of the objects they address and retargets or holds when objects move (Issue format 2, Live pointer; 7.1). All fields of one issue must take the same value. For a parameter-link issue (Issue format 4.1 note 5), the pointer is the parameter's pointer followed by /link/species_id or /link/measurement_id, for example /parameters/0/link/species_id; it points into the parameter's link entry in the evidence file, not into the document."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Written by the raiser. One plain sentence (Issue format 5.3)."
+    },
+    "document_value": {
+      "description": "Written by the raiser; optional. The value the document holds. Any JSON value, a null placeholder included."
+    },
+    "source_value": {
+      "description": "Written by the raiser; optional. The value the input states, typed where possible (7.4, not 'pH 7.4')."
+    },
+    "source_locators": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/locator"},
+      "description": "Written by the raiser. List of locators {xpath, quote} (Issue format 2, Locator). Required for source_conflict, wrong_value and missed_value."
+    },
+    "status": {
+      "enum": ["open", "unavailable", "held", "closed"],
+      "description": "Written by software. held: the target of an issue that was open or unavailable became ambiguous after objects moved; it blocks approval, is neither asked nor answered, and waits until a named person maps it (it returns to its earlier status) or disposes of it by a structural edit (Issue format 4 and 7.1, Live pointers; 6.2)."
+    },
+    "closed_by": {
+      "anyOf": [{"$ref": "#/$defs/question_id"}, {"enum": ["recheck", "override", "structural_edit"]}],
+      "description": "Written by software. A question id, recheck, override or structural_edit (Issue format 4; 6.2: also the disposal of a held issue). Present only while the issue is closed: software removes it when the issue reopens or becomes unavailable (Issue format 4; 7.1, On re-check)."
+    }
+  },
+  "required": ["issue_id", "round", "raised_by", "kind", "fields", "summary", "status"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "$comment": "Issue format 4.1, 'Raised by', and 4.2 rule 2: software registers an issue only if its raiser may raise that kind.",
+      "if": {
+        "properties": {"raised_by": {"const": "deterministic_verifier"}},
+        "required": ["raised_by"]
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "missing_required",
+              "missing_recommended",
+              "missing_optional",
+              "wrong_type",
+              "broken_reference",
+              "bad_citation",
+              "wrong_unit"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "Issue format 4.1, 'Raised by'; section 4, rule_id: issues added by the verification agent have none.",
+      "if": {
+        "properties": {"raised_by": {"const": "verification_agent"}},
+        "required": ["raised_by"]
+      },
+      "then": {
+        "properties": {
+          "kind": {"enum": ["wrong_unit", "source_conflict", "wrong_value", "missed_value"]},
+          "rule_id": false
+        }
+      }
+    },
+    {"$ref": "#/$defs/locators_where_required"},
+    {"$ref": "#/$defs/rule_matches_kind"},
+    {
+      "$comment": "Issue format 5.4: only 'not available' on a missing_required issue sets status unavailable.",
+      "if": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]},
+      "then": {"properties": {"kind": {"const": "missing_required"}}}
+    },
+    {
+      "$comment": "Issue format 4: closed_by says how a closed issue was closed, and an issue holds it only while it is closed.",
+      "if": {"properties": {"status": {"const": "closed"}}, "required": ["status"]},
+      "then": {"required": ["closed_by"]},
+      "else": {"properties": {"closed_by": false}}
+    },
+    {
+      "$comment": "Issue format 7.1, On re-check: only an open issue raised by the deterministic verifier closes with recheck.",
+      "if": {"properties": {"closed_by": {"const": "recheck"}}, "required": ["closed_by"]},
+      "then": {"properties": {"raised_by": {"const": "deterministic_verifier"}}}
+    },
+    {
+      "$comment": "Issue format 4.1 and 5.1 rule 2: missing_optional is never asked, so no question closes it. It is raised only at LIST fields, never at a SOFTWARE field, so no override closes it either (6.1).",
+      "if": {
+        "properties": {"kind": {"const": "missing_optional"}},
+        "required": ["kind", "closed_by"]
+      },
+      "then": {"properties": {"closed_by": {"enum": ["recheck", "structural_edit"]}}}
+    }
+  ],
+  "$defs": {
+    "pointer": {
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)*$",
+      "description": "A JSON Pointer into the EnzymeML document, for example /measurements/0/ph (Issue format 2). For software only; scientists never see pointers."
+    },
+    "issue_id": {
+      "type": "string",
+      "pattern": "^ISS-[0-9]{3,}$(?![\\s\\S])",
+      "description": "An issue id: ISS-001 and so on (Issue format 4). Written by software, never by an agent."
+    },
+    "question_id": {
+      "type": "string",
+      "pattern": "^Q-[0-9]{3,}$(?![\\s\\S])",
+      "description": "A question id: Q-001 and so on (Issue format 5.1). Written by software."
+    },
+    "kind": {
+      "enum": [
+        "missing_required",
+        "missing_recommended",
+        "missing_optional",
+        "wrong_type",
+        "broken_reference",
+        "bad_citation",
+        "wrong_unit",
+        "source_conflict",
+        "wrong_value",
+        "missed_value"
+      ],
+      "description": "One of the ten issue kinds of Issue format 4.1."
+    },
+    "locator": {
+      "type": "object",
+      "description": "A locator {xpath, quote} into the input (Issue format 2, Locator).",
+      "properties": {
+        "xpath": {
+          "type": "string",
+          "description": "An absolute XPath 1.0 location path from the input's root element that selects exactly one node."
+        },
+        "quote": {"type": "string", "description": "A verbatim part of that node's string value."}
+      },
+      "required": ["xpath", "quote"],
+      "additionalProperties": false
+    },
+    "locators_where_required": {
+      "$comment": "Issue format 4, source_locators: required for source_conflict, wrong_value and missed_value.",
+      "if": {
+        "properties": {"kind": {"enum": ["source_conflict", "wrong_value", "missed_value"]}},
+        "required": ["kind"]
+      },
+      "then": {"required": ["source_locators"], "properties": {"source_locators": {"minItems": 1}}}
+    },
+    "rule_matches_kind": {
+      "$comment": "Issue format 8, table 'Check | Raises', with 4.1 note 4 for a schema 'required' error at an empty field.",
+      "allOf": [
+        {
+          "if": {"properties": {"rule_id": {"const": "C-SCHEMA"}}, "required": ["rule_id"]},
+          "then": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "wrong_type",
+                  "missing_required",
+                  "missing_recommended",
+                  "missing_optional"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"rule_id": {"const": "C-REF"}}, "required": ["rule_id"]},
+          "then": {"properties": {"kind": {"const": "broken_reference"}}}
+        },
+        {
+          "if": {"properties": {"rule_id": {"const": "C-CITE"}}, "required": ["rule_id"]},
+          "then": {"properties": {"kind": {"const": "bad_citation"}}}
+        },
+        {
+          "if": {"properties": {"rule_id": {"const": "C-UNIT"}}, "required": ["rule_id"]},
+          "then": {"properties": {"kind": {"const": "wrong_unit"}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "rule_id": {
+                "enum": [
+                  "R-REC",
+                  "R-ID-PROTEIN",
+                  "R-ID-MOLECULE",
+                  "R-CTX-UNIT",
+                  "R-CTX-DATA",
+                  "R-CTX-LAW",
+                  "R-CTX-RXN"
+                ]
+              }
+            },
+            "required": ["rule_id"]
+          },
+          "then": {
+            "properties": {
+              "kind": {"enum": ["missing_required", "missing_recommended", "missing_optional"]}
+            }
+          }
+        }
+      ]
+    },
+    "raiser_part": {
+      "type": "object",
+      "description": "The fields of an issue that its raiser writes (Issue format 4, 'Written by': Raiser), as a report carries them before software adds issue_id, round, raised_by and status. For the report files of design/HANDOFFS.md 2.7 and 2.8.",
+      "$comment": "Issue format 0.8 section 4 makes source_locators required for source_conflict, wrong_value and missed_value, and design/HANDOFFS.md 2.8 checks this in the format check of the verification report; this part keeps the requirement. Issues the verification agent adds carry no rule_id (section 4; design/HANDOFFS.md 2.8), so verification-report.schema.json is to use this part with rule_id: false. Which kinds the raiser may raise is not checked here: an added issue of another kind is not registered (4.2 rule 2), and the report is still used.",
+      "properties": {
+        "kind": {"$ref": "#/properties/kind"},
+        "rule_id": {"$ref": "#/properties/rule_id"},
+        "fields": {"$ref": "#/properties/fields"},
+        "summary": {"$ref": "#/properties/summary"},
+        "document_value": {"$ref": "#/properties/document_value"},
+        "source_value": {"$ref": "#/properties/source_value"},
+        "source_locators": {"$ref": "#/properties/source_locators"}
+      },
+      "required": ["kind", "fields", "summary"],
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/locators_where_required"}, {"$ref": "#/$defs/rule_matches_kind"}]
+    }
+  },
+  "examples": [
+    {
+      "issue_id": "ISS-021",
+      "round": 1,
+      "raised_by": "verification_agent",
+      "kind": "source_conflict",
+      "fields": ["/measurements/0/ph", "/measurements/1/ph"],
+      "summary": "Both datasets give pH 7.8, but the methods text says the buffer was at pH 7.4.",
+      "document_value": 7.8,
+      "source_value": 7.4,
+      "source_locators": [
+        {"xpath": "/experiment/datasets/dataset[1]/assayConditions/value[2]/@value", "quote": "7.8"},
+        {"xpath": "/experiment/datasets/dataset[2]/assayConditions/value[2]/@value", "quote": "7.8"},
+        {"xpath": "/experiment/methodology", "quote": "20mM HEPES pH 7.4"}
+      ],
+      "status": "open"
+    }
+  ]
+}

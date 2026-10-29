@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:unit-table:v0.5",
+  "title": "Unit table",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.0 (Draft); the document wins. Proposal: Tillman Heisner accepts, changes or replaces it (Evaluation interfaces, section 4). The unit table (section 4.2): it maps each unit spelling used in the entries to a unit id, with its dimension and scale, reviewed by Tillman Heisner. The scorer compares units only through this table.",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.0 (Draft); the document wins. Section 4.1 rule 4 leaves the file format (CSV, JSON or another) to the builder; this file describes the JSON form, with one object per row in rows. Key names that section 4 does not give are marked 'Proposed name' in their description. The unit table serves all entries, so it names no item_id, variant_id or input files (4.1 rule 1 is read as applying to per-item files). Not expressed here: that each spelling appears once. The meaning of scale is not fixed by the document.",
+  "type": "object",
+  "properties": {
+    "evaluation_interfaces_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. The version of design/EVALUATION_INTERFACES.md the file follows (4.1 rule 1)."
+    },
+    "expected_file_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. The version of this expected file; a reviewed finding goes into a new version, and scores name it (4.1 rule 5)."
+    },
+    "reviewed_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name (as in Evaluation interfaces 3.3). Who reviewed the table."
+    },
+    "reviewed_on": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])",
+      "description": "Proposed name (as in Evaluation interfaces 3.3). The review date, YYYY-MM-DD."
+    },
+    "canary": {
+      "type": "string",
+      "minLength": 32,
+      "description": "Only if canaries are adopted (5.3): the file's canary, random and at least 32 characters long. Option CS7, a canary in every row, would add a row field."
+    },
+    "rows": {
+      "type": "array",
+      "description": "Proposed name. The table's rows.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "spelling": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Proposed name. The unit as an entry spells it, for example C or microM; letter case counts."
+          },
+          "unit_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The unit's meaning, for example degree_Celsius or micromolar."
+          },
+          "dimension": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Proposed name. The unit's dimension, for example temperature."
+          },
+          "scale": {"type": "number", "description": "Proposed name. The unit's scale."},
+          "pending": {
+            "type": "boolean",
+            "description": "Proposed name. true for a row not yet settled: left out of scores and listed (4.1 rule 3). Frozen test-set files hold no pending rows."
+          }
+        },
+        "required": ["spelling", "unit_id", "dimension", "scale"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "evaluation_interfaces_version",
+    "expected_file_version",
+    "reviewed_by",
+    "reviewed_on",
+    "rows"
+  ],
+  "additionalProperties": false
+}

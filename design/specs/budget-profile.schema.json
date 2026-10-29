@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:budget-profile:v1.1",
+  "title": "Budget profile",
+  "description": "Derived from design/RUN_RECORDS.md 1.1; the document wins. Draft. One budget profile file (section 4.1): a versioned configuration file that names every limit an attempt runs under, the development profile or the evaluation profile. Every value is written out; disabled is a written value, never an omission; zero means not allowed; every value not set from the measurements of section 4.8 carries 'not calibrated' (section 4.1, rules 1, 2 and 5).",
+  "$comment": "Derived from design/RUN_RECORDS.md 1.1; the document wins. Section 4.1 names its items in a table but gives few key names (token_caps, max_tokens, max_iterations), and section 2.4 gives the names of the limits (request_limit, wall_clock_minutes, input_cap); the others are proposed. The values are not set here: the development values are those of D19 A (section 4.6), and the evaluation values come from the measurements and the ledger Decision of section 4.9, whose formula is not restated here. The container limits of D20 A are not part of a budget profile: they belong to the isolation profile that the runtime manifest binds (section 4.1, row Container limits), so the file has no field for them. Not expressed here: that an evaluation cap stays within the route's documented maximum and context length (section 4.9); that the file's checksum is recorded in the run log (section 2.9). The examples are illustrative: ids, times, checksums, sizes, counts, model and route names and the max_tokens value are made up and are not proposed values.",
+  "type": "object",
+  "properties": {
+    "name": {"enum": ["development", "evaluation"], "description": "Proposed name and values: which profile."},
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. The profile's version; a change is a new version (section 4.1, rule 3)."
+    },
+    "label": {
+      "enum": ["development; not calibrated", "evaluation"],
+      "description": "Proposed name. The label (section 4.1, row Label)."
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. Evaluation profile only: the ledger Decision that froze it (section 4.9)."
+    },
+    "token_caps": {
+      "enum": ["disabled", "enabled"],
+      "description": "disabled under the development profile, written out; enabled under the evaluation profile (section 4.1)."
+    },
+    "agents": {
+      "type": "object",
+      "description": "Proposed name. The limits per agent; under the evaluation profile the caps are set per agent (section 4.9).",
+      "properties": {
+        "extraction_agent": {"$ref": "#/$defs/agent_limits"},
+        "verification_agent": {"$ref": "#/$defs/agent_limits"},
+        "inquiry_agent": {"$ref": "#/$defs/agent_limits"}
+      },
+      "required": ["extraction_agent", "verification_agent", "inquiry_agent"],
+      "additionalProperties": false
+    },
+    "hermes_retries": {
+      "const": "lowest",
+      "description": "Proposed name. Hermes's own retries at their lowest where Hermes allows it (D12 A; section 4.6)."
+    },
+    "capability_zeros": {
+      "type": "object",
+      "description": "Proposed name. The capability zeros, containment rules, not budgets: delegation, child agents, recursion, fallback requests, helper requests, mixture-of-agents calls, tools for any agent, and model requests by deterministic software (section 4.5).",
+      "properties": {
+        "delegation": {"const": 0, "description": "Proposed name."},
+        "child_agents": {"const": 0, "description": "Proposed name."},
+        "recursion": {"const": 0, "description": "Proposed name."},
+        "fallback_requests": {"const": 0, "description": "Proposed name."},
+        "helper_requests": {"const": 0, "description": "Proposed name."},
+        "mixture_of_agents_calls": {"const": 0, "description": "Proposed name."},
+        "tools": {"const": 0, "description": "Proposed name."},
+        "software_model_requests": {"const": 0, "description": "Proposed name."}
+      },
+      "required": [
+        "delegation",
+        "child_agents",
+        "recursion",
+        "fallback_requests",
+        "helper_requests",
+        "mixture_of_agents_calls",
+        "tools",
+        "software_model_requests"
+      ],
+      "additionalProperties": false
+    },
+    "technical_reruns_per_step": {"const": 1, "description": "Proposed name. At most one technical re-run per agent step (D14 A)."},
+    "rounds": {
+      "enum": ["counted, not capped", "round 1 only"],
+      "description": "Proposed name. Rounds: counted, not capped (development); evaluation stops after round 1 (section 4.1)."
+    }
+  },
+  "required": [
+    "name",
+    "version",
+    "label",
+    "token_caps",
+    "agents",
+    "hermes_retries",
+    "capability_zeros",
+    "technical_reruns_per_step",
+    "rounds"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"properties": {"name": {"const": "development"}}, "required": ["name"]},
+      "then": {
+        "properties": {
+          "label": {"const": "development; not calibrated"},
+          "token_caps": {"const": "disabled"},
+          "rounds": {"const": "counted, not capped"},
+          "decision": false,
+          "agents": {
+            "properties": {
+              "extraction_agent": {"properties": {"input_cap": {"const": "not limited"}}},
+              "verification_agent": {"properties": {"input_cap": {"const": "not limited"}}},
+              "inquiry_agent": {"properties": {"input_cap": {"const": "not limited"}}}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"name": {"const": "evaluation"}}, "required": ["name"]},
+      "then": {
+        "required": ["decision"],
+        "properties": {
+          "label": {"const": "evaluation"},
+          "token_caps": {"const": "enabled"},
+          "rounds": {"const": "round 1 only"},
+          "agents": {
+            "properties": {
+              "extraction_agent": {"properties": {"input_cap": {"not": {"const": "not limited"}}}},
+              "verification_agent": {"properties": {"input_cap": {"not": {"const": "not limited"}}}},
+              "inquiry_agent": {"properties": {"input_cap": {"not": {"const": "not limited"}}}}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "name": "development",
+      "version": "dev-1",
+      "label": "development; not calibrated",
+      "token_caps": "disabled",
+      "agents": {
+        "extraction_agent": {
+          "max_tokens": {"value": 99999, "calibration": "not calibrated"},
+          "input_cap": "not limited",
+          "request_limit": {"value": 10, "calibration": "not calibrated"},
+          "wall_clock_minutes": {"value": 60, "calibration": "not calibrated"},
+          "stage_attempt_limit": {"value": 12, "calibration": "not calibrated"},
+          "max_iterations": {"value": 4, "calibration": "not calibrated"}
+        },
+        "verification_agent": {
+          "max_tokens": {"value": 99999, "calibration": "not calibrated"},
+          "input_cap": "not limited",
+          "request_limit": {"value": 10, "calibration": "not calibrated"},
+          "wall_clock_minutes": {"value": 60, "calibration": "not calibrated"},
+          "stage_attempt_limit": {"value": 12, "calibration": "not calibrated"},
+          "max_iterations": {"value": 4, "calibration": "not calibrated"}
+        },
+        "inquiry_agent": {
+          "max_tokens": {"value": 99999, "calibration": "not calibrated"},
+          "input_cap": "not limited",
+          "request_limit": {"value": 10, "calibration": "not calibrated"},
+          "wall_clock_minutes": {"value": 60, "calibration": "not calibrated"},
+          "stage_attempt_limit": {"value": 12, "calibration": "not calibrated"},
+          "max_iterations": {"value": 4, "calibration": "not calibrated"}
+        }
+      },
+      "hermes_retries": "lowest",
+      "capability_zeros": {
+        "delegation": 0,
+        "child_agents": 0,
+        "recursion": 0,
+        "fallback_requests": 0,
+        "helper_requests": 0,
+        "mixture_of_agents_calls": 0,
+        "tools": 0,
+        "software_model_requests": 0
+      },
+      "technical_reruns_per_step": 1,
+      "rounds": "counted, not capped"
+    }
+  ],
+  "$defs": {
+    "agent_limits": {
+      "type": "object",
+      "description": "The limits for one agent.",
+      "properties": {
+        "max_tokens": {
+          "$ref": "#/$defs/limit_value",
+          "description": "max_tokens on every request: under the development profile the route's documented maximum output, taken from the route record and passed explicitly; under the evaluation profile the agent's frozen output cap (section 4.1)."
+        },
+        "input_cap": {
+          "anyOf": [{"const": "not limited"}, {"$ref": "#/$defs/limit_value"}],
+          "description": "Input tokens: not limited under the development profile (measured); the agent's frozen input cap under the evaluation profile (sections 4.1 and 4.10)."
+        },
+        "request_limit": {
+          "$ref": "#/$defs/limit_value",
+          "description": "Requests per attempt: the request guard (development) or the frozen request cap (evaluation)."
+        },
+        "wall_clock_minutes": {
+          "$ref": "#/$defs/limit_value",
+          "description": "Wall-clock time per attempt, in minutes: the guard (development) or the frozen cap (evaluation)."
+        },
+        "stage_attempt_limit": {
+          "$ref": "#/$defs/limit_value",
+          "description": "Proposed name. Agent attempts per pipeline stage of one round: the guard (development) or the frozen cap (evaluation)."
+        },
+        "max_iterations": {"$ref": "#/$defs/limit_value", "description": "Hermes's loop bound (section 4.6; Runtime 12.3)."}
+      },
+      "required": [
+        "max_tokens",
+        "input_cap",
+        "request_limit",
+        "wall_clock_minutes",
+        "stage_attempt_limit",
+        "max_iterations"
+      ],
+      "additionalProperties": false
+    },
+    "limit_value": {
+      "type": "object",
+      "description": "A limit value with its calibration label.",
+      "properties": {
+        "value": {"type": "integer", "minimum": 1, "description": "Proposed name."},
+        "calibration": {
+          "enum": ["not calibrated", "set from measurements"],
+          "description": "Proposed name. not calibrated, or set from measurements (section 4.1, rule 5)."
+        }
+      },
+      "required": ["value", "calibration"],
+      "additionalProperties": false
+    }
+  }
+}

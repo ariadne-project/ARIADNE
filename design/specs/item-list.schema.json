@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:item-list:v1.2",
+  "title": "Item list",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Draft: ARIADNE specifies this format and Tillman Heisner freezes its version (section 1.3; D9 A). One item list (section 3.4), per step under test, used unchanged for both conditions; an item list of measurement-only size variants is used only by measurement batches.",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Section 3.4 gives the item fields, and the list-level fields follow section 3 (List-level fields); the shape of example_manifest_ids (a map from condition to a map from agent to manifest id) is proposed. Checksums are lowercase (section 3). Fold consistency (sections 3.3 and 3.4): an item's fold is dev-T9HQ4X or dev-GNICYO when its split is development and test when its split is test, which this file expresses; and every example manifest an item names, zero-shot and few-shot alike, has the item's own fold (section 3.3, manifest check, rule 4), which needs the manifests and is checked by software. Not expressed here either: that the input and the example manifests exist; that the fold is the one leave-one-out gives the item's input (dev-T9HQ4X for T9HQ4X and its variants, dev-GNICYO for GNICYO and its variants); that all items of one list have the same step; that frozen files match their checksums. The examples are illustrative: ids, times, checksums, sizes, counts and names are made up.",
+  "type": "object",
+  "properties": {
+    "item_list_id": {"type": "string", "minLength": 1, "description": "The item list's id."},
+    "list_version": {"type": "string", "minLength": 1, "description": "The list's version."},
+    "evaluation_interfaces_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The version of design/EVALUATION_INTERFACES.md the list follows (section 3, List-level fields)."
+    },
+    "frozen_on": {
+      "$ref": "#/$defs/date",
+      "description": "The date Tillman Heisner froze it; absent while it is a draft (section 3)."
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_id": {"type": "string", "minLength": 1, "description": "Opaque id."},
+          "step": {
+            "enum": ["extraction_agent", "deterministic_verifier", "verification_agent", "inquiry_agent", "sequence"]
+          },
+          "split": {"enum": ["development", "test"], "description": "The split of its input."},
+          "fold": {
+            "enum": ["dev-T9HQ4X", "dev-GNICYO", "test"],
+            "description": "The item's fold (section 3.3): dev-T9HQ4X or dev-GNICYO for a development item, test for a test item. Every example manifest the item names has this fold, in both conditions."
+          },
+          "input_id": {"type": "string", "minLength": 1, "description": "The entry or entry variant."},
+          "frozen_files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {"file_name": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/checksum"}},
+              "required": ["file_name", "sha256"],
+              "additionalProperties": false
+            },
+            "description": "The files the step starts from, each with its SHA-256; none for extraction-agent and sequence items."
+          },
+          "example_manifest_ids": {
+            "type": "object",
+            "propertyNames": {"enum": ["zero_shot", "few_shot"]},
+            "description": "For each condition, the example manifest of each agent the item runs: one for mode A, three for mode B, none for the deterministic verifier."
+          }
+        },
+        "required": ["item_id", "step", "split", "fold", "input_id", "frozen_files", "example_manifest_ids"],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "$comment": "Sections 3.3 and 3.4: the fold follows the split.",
+            "if": {"properties": {"split": {"const": "test"}}, "required": ["split"]},
+            "then": {"properties": {"fold": {"const": "test"}}},
+            "else": {"properties": {"fold": {"enum": ["dev-T9HQ4X", "dev-GNICYO"]}}}
+          },
+          {
+            "if": {"properties": {"step": {"enum": ["extraction_agent", "sequence"]}}, "required": ["step"]},
+            "then": {"properties": {"frozen_files": {"maxItems": 0}}}
+          },
+          {
+            "if": {
+              "properties": {"step": {"enum": ["deterministic_verifier", "verification_agent", "inquiry_agent"]}},
+              "required": ["step"]
+            },
+            "then": {"properties": {"frozen_files": {"minItems": 1}}}
+          },
+          {
+            "if": {"properties": {"step": {"const": "deterministic_verifier"}}, "required": ["step"]},
+            "then": {"properties": {"example_manifest_ids": {"maxProperties": 0}}}
+          },
+          {
+            "if": {"properties": {"step": {"const": "sequence"}}, "required": ["step"]},
+            "then": {
+              "properties": {
+                "example_manifest_ids": {
+                  "required": ["zero_shot", "few_shot"],
+                  "additionalProperties": {
+                    "type": "object",
+                    "required": ["extraction_agent", "verification_agent", "inquiry_agent"],
+                    "properties": {
+                      "extraction_agent": {"type": "string", "minLength": 1},
+                      "verification_agent": {"type": "string", "minLength": 1},
+                      "inquiry_agent": {"type": "string", "minLength": 1}
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {"properties": {"step": {"const": "extraction_agent"}}, "required": ["step"]},
+            "then": {
+              "properties": {
+                "example_manifest_ids": {
+                  "required": ["zero_shot", "few_shot"],
+                  "additionalProperties": {
+                    "type": "object",
+                    "required": ["extraction_agent"],
+                    "properties": {"extraction_agent": {"type": "string", "minLength": 1}},
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {"properties": {"step": {"const": "verification_agent"}}, "required": ["step"]},
+            "then": {
+              "properties": {
+                "example_manifest_ids": {
+                  "required": ["zero_shot", "few_shot"],
+                  "additionalProperties": {
+                    "type": "object",
+                    "required": ["verification_agent"],
+                    "properties": {"verification_agent": {"type": "string", "minLength": 1}},
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {"properties": {"step": {"const": "inquiry_agent"}}, "required": ["step"]},
+            "then": {
+              "properties": {
+                "example_manifest_ids": {
+                  "required": ["zero_shot", "few_shot"],
+                  "additionalProperties": {
+                    "type": "object",
+                    "required": ["inquiry_agent"],
+                    "properties": {"inquiry_agent": {"type": "string", "minLength": 1}},
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": ["item_list_id", "list_version", "evaluation_interfaces_version", "items"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "item_list_id": "IL-VERIFICATION-DEV",
+      "list_version": "1",
+      "evaluation_interfaces_version": "1.2",
+      "frozen_on": "2026-12-01",
+      "items": [
+        {
+          "item_id": "IT-0042",
+          "step": "verification_agent",
+          "split": "development",
+          "fold": "dev-T9HQ4X",
+          "input_id": "V-0007",
+          "frozen_files": [
+            {
+              "file_name": "IT-0042-draft.json",
+              "sha256": "7743ce348d9284d677a185f33295b92266cc435a5b5f775029b300066d26693a"
+            },
+            {
+              "file_name": "IT-0042-evidence.json",
+              "sha256": "ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e"
+            },
+            {
+              "file_name": "IT-0042-not-mapped.json",
+              "sha256": "2ca7289b5248632c8fe5386b972e8fde6585068c5cb8e2948489e10e7be6d4d8"
+            },
+            {
+              "file_name": "IT-0042-issues.json",
+              "sha256": "02e3fe5aad80ca85ace4db35008faabe7950c53998160c66c9072b6fd33dec0f"
+            }
+          ],
+          "example_manifest_ids": {
+            "zero_shot": {"verification_agent": "EM-V-ZERO-DEV-T9HQ4X"},
+            "few_shot": {"verification_agent": "EM-V-FEW-DEV-T9HQ4X"}
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])",
+      "description": "A date, YYYY-MM-DD."
+    }
+  }
+}

@@ -42,3 +42,6 @@ secrets/
 *.log
 *.tmp
 *.bak
+
+# Local working area (scratch tools, downloaded data, generated output)
+local/

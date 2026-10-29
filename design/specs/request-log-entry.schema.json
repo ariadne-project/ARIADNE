@@ -1,0 +1,368 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:request-log-entry:v1.1",
+  "title": "Request-log entry",
+  "description": "Derived from design/RUN_RECORDS.md 1.1; the document wins. Draft. One entry of a run's request-log.jsonl (sections 2.3 and 2.5): a request entry when a request arrives at the model gateway and has been checked, before anything is forwarded, a response entry when its response has ended, was cut or was closed, or a status entry when the gateway has answered the runner's status request of an attempt (Runtime 5.4, item 8). A status entry is not a model request and is never counted as one. A refused request gets only a request entry; a forwarded request without a response entry has unknown usage (section 4.4).",
+  "$comment": "Derived from design/RUN_RECORDS.md 1.1; the document wins. What the gateway logs and why is in design/RUNTIME.md 11.3; this file follows the field-level format of section 2.5. Key names and values that section 2.5 does not give are marked 'Proposed'. The request log is part of the run log, so its checksums are kept in the run log only (sections 1.2 and 2.9; D13 A). Never in this log: the gateway token, the provider key or any other credential (section 2.5); authentication header values are masked. A missing usage count is never written as zero: a category absent from usage is named in usage_unknown. A count the provider reported is kept even when it is incomplete, for example from a cut stream, beside its category in usage_unknown, as a provisional count (sections 2.5 and 4.4, rule 1); a schema cannot tell a provisional count from a complete one, so only the flag marks it. Not expressed here: that a request and its response share attempt_id and req; that req counts from 1 within the attempt; that class is right (a retry has the same body as an earlier request of the attempt, and unclassifiable is used only where none of the other three fits); that an attempt has at most one status entry, and that its answered_at is the time that the attempt's attempt_ended entry copies as status_answered_at (section 2.4). The examples are illustrative: ids, times, checksums, sizes, counts, model and route names and the max_tokens value are made up and are not proposed values. The body of the first example (61,887 bytes) is larger than the packet it carries whole as its user message (51,087 bytes in the first example of evaluation-run-record.schema.json), because it also holds the system text and the JSON framing. The third example is the status entry of the attempt of the first two: the runner sends its status request first (Runtime 5.4), so the entry is the first line of the run's request log, and the request and response entries follow at seq 2 and 3. The attempt's range in the request log, as its attempt_ended entry gives it in run-log-entry.schema.json, is then seq 1 to 3, the status entry included.",
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The entry's position in its file, counted from 1, without gaps (Run records 2.3; 2.10, rule 2)."
+    },
+    "entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Written by software, unique within the run (Run records 2.3)."
+    },
+    "run_id": {"$ref": "#/$defs/ariadne_id"},
+    "run_kind": {"$ref": "#/$defs/run_kind"},
+    "kind": {"enum": ["request", "response", "status"]},
+    "at": {
+      "$ref": "#/$defs/utc_time",
+      "description": "When the entry was written, from the software clock (Run records 2.3)."
+    },
+    "source": {"const": "model_gateway", "description": "The model gateway writes this log (Run records 2.10, rule 3)."},
+    "attempt_id": {"$ref": "#/$defs/ariadne_id", "description": "Links the entry to the run log."},
+    "req": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Request and response entries only: the request's number within the attempt, counted from 1. A status entry has none."
+    }
+  },
+  "required": ["seq", "entry_id", "run_id", "run_kind", "kind", "at", "source", "attempt_id"],
+  "allOf": [
+    {
+      "if": {"properties": {"kind": {"const": "request"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_request"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "response"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_response"}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "status"}}, "required": ["kind"]},
+      "then": {"$ref": "#/$defs/kind_status"}
+    }
+  ],
+  "unevaluatedProperties": false,
+  "examples": [
+    {
+      "seq": 2,
+      "entry_id": "G-0002",
+      "run_id": "RUN-0101",
+      "run_kind": "measurement",
+      "kind": "request",
+      "at": "2026-11-20T09:01:05Z",
+      "source": "model_gateway",
+      "attempt_id": "ATT-0001",
+      "req": 1,
+      "class": "first",
+      "forwarded": true,
+      "test_setting": "none",
+      "sent_at": "2026-11-20T09:01:05Z",
+      "body_sha256": "85e08f281bf3d004784e18d04a1a8d0b8fa37ab50d6ea39c3f4b43145375762f",
+      "body_bytes": 61887,
+      "body": {
+        "artifact_id": "AR-0016",
+        "path": "bodies/ATT-0001/request-1.json.gz",
+        "sha256": "d003e911c33caf3c297947ddd1843bb0b0cb11e8802370772a6ac9fbea621319",
+        "bytes": 18000,
+        "media_type": "application/gzip"
+      },
+      "stream": true,
+      "model": "example-model-20260101",
+      "max_tokens": 99999,
+      "generation_settings": {
+        "reasoning": "none",
+        "sampling": {"temperature": 0},
+        "body_without_messages_sha256": "235c1a53176a271370c185324b97ef45b7961386c33f68300a58721927a62a57"
+      },
+      "headers": {"forwarded": {"anthropic-version": "2023-06-01", "x-api-key": "***"}}
+    },
+    {
+      "seq": 3,
+      "entry_id": "G-0003",
+      "run_id": "RUN-0101",
+      "run_kind": "measurement",
+      "kind": "response",
+      "at": "2026-11-20T09:07:20Z",
+      "source": "model_gateway",
+      "attempt_id": "ATT-0001",
+      "req": 1,
+      "answered_at": "2026-11-20T09:07:20Z",
+      "provider_status": 200,
+      "stop_reason": "end_turn",
+      "cut_stream": false,
+      "closed_by_gateway": false,
+      "usage": {
+        "input_tokens": 1200,
+        "cache_write_tokens": 30000,
+        "cache_read_tokens": 0,
+        "output_tokens": 5400,
+        "reasoning_tokens": "not_reported"
+      },
+      "usage_unknown": [],
+      "served_model": "example-model-20260101",
+      "provider_request_id": "req_example_0001",
+      "response": {
+        "artifact_id": "AR-0017",
+        "path": "bodies/ATT-0001/response-1.json.gz",
+        "sha256": "b0f9921bd9ea367ab127324f6700c41a5a3537406c442a04bc0549559846c773",
+        "bytes": 9000,
+        "media_type": "application/gzip"
+      }
+    },
+    {
+      "seq": 1,
+      "entry_id": "G-0001",
+      "run_id": "RUN-0101",
+      "run_kind": "measurement",
+      "kind": "status",
+      "at": "2026-11-20T09:01:04Z",
+      "source": "model_gateway",
+      "attempt_id": "ATT-0001",
+      "answered_at": "2026-11-20T09:01:04Z"
+    }
+  ],
+  "$defs": {
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "file_ref": {
+      "type": "object",
+      "description": "A file reference (Run records 1.2): how a run-log entry names a stored file, by its artifact id, its place in the run or batch folder, its checksum, its size in bytes and its media type. File references exist in the run log only, never in a record file, handoff or packet.",
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The file's artifact id (Handoffs 2.1)."},
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/]",
+          "description": "Proposed name. The file's place in the run or batch folder (Run records 2.2), relative to that folder."
+        },
+        "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The file's checksum (Run records 2.9)."},
+        "bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. The file's size in bytes."},
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(\\s*;.*)?$",
+          "description": "Proposed name. The file's media type, for example application/json."
+        }
+      },
+      "required": ["artifact_id", "path", "sha256", "bytes", "media_type"],
+      "additionalProperties": false
+    },
+    "generation_settings": {
+      "type": "object",
+      "description": "The reasoning setting and every sampling parameter as sent, with the checksum of the body without its messages (Run records 2.5, generation_settings).",
+      "properties": {
+        "reasoning": {
+          "anyOf": [{"type": "object"}, {"const": "none"}],
+          "description": "Proposed name. The reasoning setting as sent, or none (Runtime 12.1, row Reasoning setting)."
+        },
+        "sampling": {"type": "object", "description": "Proposed name. Every sampling parameter as sent, by name."},
+        "body_without_messages_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The checksum of the request body without its messages, so that requests can be compared."
+        }
+      },
+      "required": ["reasoning", "sampling", "body_without_messages_sha256"],
+      "additionalProperties": false
+    },
+    "kind_request": {
+      "type": "object",
+      "description": "request (Run records 2.5).",
+      "properties": {
+        "class": {
+          "enum": ["first", "retry", "continuation", "unclassifiable"],
+          "description": "first, retry or continuation, as Runtime 11.3 defines them, wherever one of them fits, refused or not; otherwise unclassifiable, allowed only for a refused request with its refusal reason in rules_failed, for example a later request whose body is a JSON array instead of the required object. An unclassifiable request is never forwarded, is counted as refused and against the request guard or the frozen request cap, and is never relabelled as another class (Run records 2.5; Runtime 11.2 and 11.3)."
+        },
+        "forwarded": {"type": "boolean"},
+        "rules_failed": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 1, "maximum": 12},
+          "description": "For a refused request, every gateway rule it fails, by number (Runtime 11.2)."
+        },
+        "refusal_status": {
+          "type": "integer",
+          "minimum": 400,
+          "maximum": 499,
+          "description": "For a refused request, the fixed client-error status of the refusal answer (Runtime 11.2)."
+        },
+        "canary": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Proposed. For a refusal under gateway rule 11, the position of the canary in the canary list, never its text."
+        },
+        "test_setting": {
+          "enum": ["capture", "rule_9_off", "negative_configuration", "none"],
+          "description": "Containment runs only: the test-only setting in force (D21 A); in a real run always none."
+        },
+        "sent_at": {"$ref": "#/$defs/utc_time", "description": "When the request arrived at the gateway."},
+        "body_sha256": {"$ref": "#/$defs/checksum"},
+        "body_bytes": {"type": "integer", "minimum": 0},
+        "body": {"$ref": "#/$defs/file_ref", "description": "The full request body (Run records 2.11)."},
+        "stream": {"type": "boolean", "description": "Whether the request asks for a streamed answer."},
+        "model": {"type": "string", "minLength": 1, "description": "The model as sent."},
+        "max_tokens": {"type": "integer", "minimum": 1, "description": "max_tokens as sent."},
+        "generation_settings": {"$ref": "#/$defs/generation_settings"},
+        "headers": {
+          "type": "object",
+          "properties": {
+            "forwarded": {
+              "type": "object",
+              "additionalProperties": {"type": "string"},
+              "description": "Proposed name. The forwarded headers with their values, authentication values masked."
+            },
+            "incoming": {
+              "type": "object",
+              "additionalProperties": {"type": "string"},
+              "description": "Proposed name. Containment runs only: every incoming header, authentication values masked."
+            }
+          },
+          "required": ["forwarded"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["req", "class", "forwarded", "test_setting", "sent_at", "body_sha256", "body_bytes", "body", "headers"],
+      "allOf": [
+        {
+          "if": {"properties": {"forwarded": {"const": true}}, "required": ["forwarded"]},
+          "then": {
+            "required": ["stream", "model", "max_tokens", "generation_settings"],
+            "properties": {"rules_failed": false, "refusal_status": false}
+          }
+        },
+        {
+          "if": {"properties": {"forwarded": {"const": false}}, "required": ["forwarded"]},
+          "then": {"required": ["rules_failed", "refusal_status"]}
+        },
+        {
+          "$comment": "Run records 2.5, class; Runtime 11.3, Unclassifiable requests: never forwarded, and always with its refusal reason, which the branch for forwarded false requires.",
+          "if": {"properties": {"class": {"const": "unclassifiable"}}, "required": ["class"]},
+          "then": {"required": ["forwarded"], "properties": {"forwarded": {"const": false}}}
+        },
+        {
+          "if": {"properties": {"rules_failed": {"contains": {"const": 11}}}, "required": ["rules_failed"]},
+          "then": {"required": ["canary"]},
+          "else": {"properties": {"canary": false}}
+        },
+        {
+          "if": {"properties": {"run_kind": {"enum": ["containment"]}}, "required": ["run_kind"]},
+          "else": {"properties": {"test_setting": {"const": "none"}, "headers": {"properties": {"incoming": false}}}}
+        }
+      ]
+    },
+    "kind_response": {
+      "type": "object",
+      "description": "response (Run records 2.5).",
+      "properties": {
+        "answered_at": {"$ref": "#/$defs/utc_time", "description": "When the response ended."},
+        "provider_status": {"type": "integer", "minimum": 100, "maximum": 599, "description": "The provider's status."},
+        "stop_reason": {"type": "string", "minLength": 1, "description": "The stop reason, or none."},
+        "cut_stream": {
+          "type": "boolean",
+          "description": "true when the response ended without a stop reason, including a stream the client abandoned."
+        },
+        "closed_by_gateway": {"type": "boolean", "description": "true when the gateway closed an abandoned stream upstream."},
+        "usage": {
+          "type": "object",
+          "description": "Usage as the provider reports it; for a streamed response, read from the stream's events. A reported count is kept even when it is incomplete; its category is then also in usage_unknown, and the count is provisional (Run records 2.5 and 4.4).",
+          "properties": {
+            "input_tokens": {"type": "integer", "minimum": 0, "description": "Uncached input tokens."},
+            "cache_write_tokens": {"type": "integer", "minimum": 0},
+            "cache_read_tokens": {"type": "integer", "minimum": 0},
+            "output_tokens": {"type": "integer", "minimum": 0},
+            "reasoning_tokens": {"anyOf": [{"type": "integer", "minimum": 0}, {"const": "not_reported"}]}
+          },
+          "additionalProperties": false
+        },
+        "usage_unknown": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["input_tokens", "cache_write_tokens", "cache_read_tokens", "output_tokens", "reasoning_tokens"]
+          },
+          "description": "The usage categories that are missing or incomplete (Run records 4.4); empty when usage is complete. A missing count is absent from usage and requires its category here; an incomplete count stays in usage beside its category here. Reasoning recorded as not_reported is not unknown (Run records 4.4, rule 4)."
+        },
+        "served_model": {"type": "string", "minLength": 1, "description": "Where the provider reports it."},
+        "provider_request_id": {"type": "string", "minLength": 1, "description": "Where the provider reports it."},
+        "response": {"$ref": "#/$defs/file_ref", "description": "The full response body (Run records 2.11)."}
+      },
+      "required": ["req", "answered_at", "stop_reason", "cut_stream", "closed_by_gateway", "usage", "usage_unknown", "response"],
+      "allOf": [
+        {
+          "if": {"properties": {"cut_stream": {"const": true}}, "required": ["cut_stream"]},
+          "then": {"properties": {"stop_reason": {"const": "none"}}},
+          "else": {"properties": {"stop_reason": {"not": {"const": "none"}}, "closed_by_gateway": {"const": false}}}
+        },
+        {
+          "if": {"properties": {"usage": {"not": {"required": ["input_tokens"]}}}, "required": ["usage"]},
+          "then": {
+            "required": ["usage_unknown"],
+            "properties": {"usage_unknown": {"contains": {"const": "input_tokens"}}}
+          }
+        },
+        {
+          "if": {"properties": {"usage": {"not": {"required": ["cache_write_tokens"]}}}, "required": ["usage"]},
+          "then": {
+            "required": ["usage_unknown"],
+            "properties": {"usage_unknown": {"contains": {"const": "cache_write_tokens"}}}
+          }
+        },
+        {
+          "if": {"properties": {"usage": {"not": {"required": ["cache_read_tokens"]}}}, "required": ["usage"]},
+          "then": {
+            "required": ["usage_unknown"],
+            "properties": {"usage_unknown": {"contains": {"const": "cache_read_tokens"}}}
+          }
+        },
+        {
+          "if": {"properties": {"usage": {"not": {"required": ["output_tokens"]}}}, "required": ["usage"]},
+          "then": {
+            "required": ["usage_unknown"],
+            "properties": {"usage_unknown": {"contains": {"const": "output_tokens"}}}
+          }
+        },
+        {
+          "if": {"properties": {"usage": {"not": {"required": ["reasoning_tokens"]}}}, "required": ["usage"]},
+          "then": {
+            "required": ["usage_unknown"],
+            "properties": {"usage_unknown": {"contains": {"const": "reasoning_tokens"}}}
+          }
+        }
+      ]
+    },
+    "kind_status": {
+      "type": "object",
+      "description": "status (Run records 2.5): written when the gateway has answered the runner's status request of an attempt (Runtime 5.4, item 8), once, with the common fields, attempt_id and answered_at. It has no req, is not a model request and is never counted as one.",
+      "properties": {
+        "answered_at": {
+          "$ref": "#/$defs/utc_time",
+          "description": "When the gateway answered the status request. The attempt's attempt_ended entry copies it as status_answered_at (Run records 2.4)."
+        },
+        "req": false
+      },
+      "required": ["answered_at"]
+    },
+    "run_kind": {
+      "enum": ["pipeline", "evaluation", "measurement", "containment", "behaviour_variant"],
+      "description": "What kind of run the entry belongs to (Run records 2.3): pipeline; evaluation (the runs of an evaluation batch, development batches included); measurement (the runs of a measurement batch, never scored); containment (a containment suite run and its test runs, Containment 2.6); behaviour_variant (a behaviour-variant run of the prompt-injection tests, never scored and never measured). In a batch log, the batch's kind, evaluation or measurement."
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}

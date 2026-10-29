@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:not-mapped-entry:v0.6",
+  "title": "Not-mapped entry",
+  "description": "Derived from ISSUE_FORMAT.md 0.6; the document wins. One entry of the not-mapped report (section 8.1, Not-mapped entry; section 7.1 step 1): a locator into the input and a one-sentence reason why EnzymeML cannot hold that information, and, for a value its field cannot hold, that field's pointer. Drafted by the extraction agent; $defs/as_drafted is the entry as the draft proposal holds it.",
+  "$comment": "Derived from ISSUE_FORMAT.md 0.6; the document wins. For a value its field cannot hold, the entry names that field by its pointer (8.1); Issue format 0.6 gives that key no name. design/HANDOFFS.md 2.5 and 2.14 name it candidate_field: in the draft proposal {object, field}, with the object's local link name and the EnzymeML property name ($defs/as_drafted), because the extraction agent writes no pointers; in the not-mapped report the field's JSON Pointer, which the assembly step computes (design/HANDOFFS.md 2.6 step 5).md 2. The deterministic verifier copies the quote into the source_value of the missing issue at that pointer, and the entry stays in the report whatever the answer (8.1, Values the field cannot hold). No entry needs a link to an issue (8.1). The Locator rule (absolute XPath 1.0, exactly one node, verbatim quote) applies to xpath and quote; checking it needs the input, so this file checks only that both are strings. Nothing checks that every part of the input is either mapped or listed (8.1). Where no object or two objects carry the draft's local link name, the assembly step leaves candidate_field out and keeps the entry (design/HANDOFFS.md 2.6 step 5), so the report's candidate_field is always a JSON Pointer.",
+  "type": "object",
+  "properties": {
+    "xpath": {
+      "type": "string",
+      "description": "Where the input states the information: an absolute XPath 1.0 location path that selects exactly one node (Issue format 2, Locator)."
+    },
+    "quote": {
+      "type": "string",
+      "description": "A verbatim part of that node's string value."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why EnzymeML cannot hold it, in one sentence."
+    },
+    "candidate_field": {
+      "$ref": "#/$defs/pointer",
+      "description": "For a value its field cannot hold: that field's JSON Pointer (Issue format 8.1), for example /measurements/0/species_data/2/prepared. Written by the assembly step from the draft's {object, field}; left out when no object or two objects carry that local link name (design/HANDOFFS.md 2.6 step 5). Key name from design/HANDOFFS.md 2.14."
+    }
+  },
+  "required": [
+    "xpath",
+    "quote",
+    "reason"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "as_drafted": {
+      "type": "object",
+      "description": "A not-mapped entry as the extraction agent writes it in the draft proposal (design/HANDOFFS.md 2.5 and 2.14), before the assembly step replaces candidate_field {object, field} with the field's pointer. For the draft-proposal file of design/HANDOFFS.md section 5.",
+      "properties": {
+        "xpath": {
+          "$ref": "#/properties/xpath"
+        },
+        "quote": {
+          "$ref": "#/properties/quote"
+        },
+        "reason": {
+          "$ref": "#/properties/reason"
+        },
+        "candidate_field": {
+          "type": "object",
+          "description": "For a value its field cannot hold: that field, named by the object and the property, because the extraction agent writes no pointers (design/HANDOFFS.md 2.5). Key name from design/HANDOFFS.md 2.14.",
+          "properties": {
+            "object": {
+              "$ref": "#/$defs/ariadne_id",
+              "description": "The local link name of the object that has the field (design/HANDOFFS.md 2.5, link)."
+            },
+            "field": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The EnzymeML property name of the field, for example prepared."
+            }
+          },
+          "required": [
+            "object",
+            "field"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "xpath",
+        "quote",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "pointer": {
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)*$"
+    }
+  }
+}

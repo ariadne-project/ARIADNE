@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:evaluation-batch-record:v1.5",
+  "title": "Evaluation batch record",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.5 (Draft); the document wins. Draft: ARIADNE specifies this format and Tillman Heisner freezes its version (section 1.3; D9 A). The batch record of one evaluation or measurement batch (section 10.1): a stored file, written once when the batch ends or is refused, named with its checksum by the batch log's batch_ended or batch_refused entry (design/RUN_RECORDS.md 2.3). Software copies each value from the batch log.",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.5 (Draft); the document wins. Key names inside admission, budget_profile, items, end and evaluation_plan that sections 4.8 and 10.1 do not give are marked 'Proposed name'; section 4.8 itself proposes the key names of the tuning disclosure. The batch record is part of the run log, so its checksums are kept in the run log only (section 10.1; D13 A). A value that the admission attempt of a refused batch did not determine is absent, never filled in. The notes that come after a stopped batch (the fix and canary_review entries) are in the batch log, not here. Not expressed here: that values equal the batch log's; that runs_not_completed names runs of this batch; whether the batch is a held-out assessment, which needs its item lists (an item's split, section 3.4), and so whether evaluation_plan and tuning_disclosure are required (section 7.1, rule 9); that the items of the batch share one split (section 7.1, rule 10); that the plan file exists, matches its checksum, records its approval and freeze and holds criteria. The second example is a held-out assessment. The examples are illustrative: ids, times, checksums, sizes, counts and names are made up.",
+  "type": "object",
+  "properties": {
+    "batch_id": {"$ref": "#/$defs/ariadne_id"},
+    "kind": {
+      "enum": ["evaluation", "measurement"],
+      "description": "evaluation or measurement, as the batch log's run_kind records it."
+    },
+    "admission": {
+      "type": "object",
+      "description": "The result and time of the admission of section 7.1.",
+      "properties": {
+        "result": {"enum": ["admitted", "refused"], "description": "Proposed name."},
+        "at": {"$ref": "#/$defs/utc_time", "description": "Proposed name. The time of the admission."},
+        "failed_rules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 1, "maximum": 10},
+          "description": "Proposed name. If refused, each rule of section 7.1 that failed."
+        }
+      },
+      "required": ["result", "at"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"const": "refused"}}, "required": ["result"]},
+          "then": {"required": ["failed_rules"]}
+        },
+        {
+          "if": {"properties": {"result": {"const": "admitted"}}, "required": ["result"]},
+          "then": {"properties": {"failed_rules": false}}
+        }
+      ]
+    },
+    "follows_batch": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "For a batch that runs what a stopped batch did not complete, that batch's id; otherwise absent."
+    },
+    "runtime_manifest_sha256": {"$ref": "#/$defs/checksum"},
+    "containment_report": {"$ref": "#/$defs/ariadne_id"},
+    "budget_profile": {
+      "type": "object",
+      "description": "The profile's name and version (section 10.6).",
+      "properties": {
+        "name": {"enum": ["development", "evaluation"], "description": "Proposed name."},
+        "version": {"type": "string", "minLength": 1, "description": "Proposed name."}
+      },
+      "required": ["name", "version"],
+      "additionalProperties": false
+    },
+    "items": {"$ref": "#/$defs/item_lists"},
+    "conditions": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/condition"}},
+    "repetitions": {"type": "integer", "minimum": 1},
+    "canaries": {"$ref": "#/$defs/canaries"},
+    "evaluation_plan": {
+      "$ref": "#/$defs/evaluation_plan_ref",
+      "description": "For a held-out assessment: the evaluation-plan version it references, copied from batch_started (section 4.8); absent for a development batch."
+    },
+    "tuning_disclosure": {
+      "$ref": "#/$defs/tuning_disclosure",
+      "description": "For a held-out assessment: the tuning disclosure recorded before it started, copied from batch_started (section 4.8); absent for a development batch."
+    },
+    "started_at": {"$ref": "#/$defs/utc_time"},
+    "ended_at": {"$ref": "#/$defs/utc_time"},
+    "end": {"$ref": "#/$defs/batch_end"}
+  },
+  "required": ["batch_id", "kind", "admission"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {"admission": {"properties": {"result": {"const": "refused"}}, "required": ["result"]}},
+        "required": ["admission"]
+      },
+      "then": {"properties": {"started_at": false, "ended_at": false, "end": false}},
+      "else": {
+        "required": [
+          "runtime_manifest_sha256",
+          "containment_report",
+          "budget_profile",
+          "items",
+          "conditions",
+          "repetitions",
+          "canaries",
+          "started_at",
+          "ended_at",
+          "end"
+        ],
+        "dependentRequired": {"evaluation_plan": ["tuning_disclosure"], "tuning_disclosure": ["evaluation_plan"]}
+      }
+    }
+  ],
+  "examples": [
+    {
+      "batch_id": "BAT-0007",
+      "kind": "measurement",
+      "admission": {"result": "admitted", "at": "2026-11-20T09:00:00Z"},
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "containment_report": "CR-0004",
+      "budget_profile": {"name": "development", "version": "dev-1"},
+      "items": [{"item_list_id": "IL-EXTRACTION-DEV", "version": "1"}],
+      "conditions": ["zero_shot", "few_shot"],
+      "repetitions": 3,
+      "canaries": "none",
+      "started_at": "2026-11-20T09:00:00Z",
+      "ended_at": "2026-11-20T15:42:10Z",
+      "end": {"result": "completed", "runs_not_completed": []}
+    },
+    {
+      "batch_id": "BAT-0012",
+      "kind": "evaluation",
+      "admission": {"result": "admitted", "at": "2026-12-01T09:00:00Z"},
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "containment_report": "CR-0004",
+      "budget_profile": {"name": "evaluation", "version": "eval-1"},
+      "items": [{"item_list_id": "IL-EXTRACTION-TEST", "version": "1"}],
+      "conditions": ["zero_shot", "few_shot"],
+      "repetitions": 3,
+      "canaries": "none",
+      "evaluation_plan": {
+        "plan_version": "1",
+        "plan": {
+          "artifact_id": "AR-1201",
+          "path": "plan/evaluation-plan-1.json",
+          "sha256": "4c1a9e0d7b3f52e8a6c4d2b0f8e6a4c2b0d8f6e4a2c0b8d6f4e2a0c8b6d4f2e0",
+          "bytes": 2140,
+          "media_type": "application/json"
+        }
+      },
+      "tuning_disclosure": {"test_information_used": false, "recorded_by": "Tillman Heisner", "recorded_at": "2026-12-01T08:40:00Z"},
+      "started_at": "2026-12-01T09:00:00Z",
+      "ended_at": "2026-12-01T16:20:00Z",
+      "end": {"result": "completed", "runs_not_completed": []}
+    }
+  ],
+  "$defs": {
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "batch_end": {
+      "type": "object",
+      "description": "How a batch ended (Run records 2.3, batch_ended; Evaluation interfaces 10.1, end, and 10.4).",
+      "properties": {
+        "result": {"enum": ["completed", "stopped"], "description": "Proposed name."},
+        "stopped_by": {"$ref": "#/$defs/stop_cause", "description": "Proposed name."},
+        "stopped_in_run": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The run where the stop happened."},
+        "runs_not_completed": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/ariadne_id"},
+          "description": "Proposed name. The ids of the runs that were not completed; empty for a completed batch."
+        }
+      },
+      "required": ["result", "runs_not_completed"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"result": {"const": "stopped"}}, "required": ["result"]},
+          "then": {"required": ["stopped_by", "stopped_in_run"]}
+        },
+        {
+          "if": {"properties": {"result": {"const": "completed"}}, "required": ["result"]},
+          "then": {
+            "properties": {"stopped_by": false, "stopped_in_run": false, "runs_not_completed": {"maxItems": 0}}
+          }
+        }
+      ]
+    },
+    "canaries": {
+      "anyOf": [
+        {"const": "none"},
+        {
+          "type": "object",
+          "properties": {
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {"enum": ["CS1", "CS2", "CS3", "CS4", "CS5", "CS6", "CS7"]},
+              "description": "Proposed name. The adopted options of Evaluation interfaces 5.3."
+            },
+            "canary_list_sha256": {
+              "$ref": "#/$defs/checksum",
+              "description": "Proposed name. The checksum of the canary list loaded."
+            }
+          },
+          "required": ["options", "canary_list_sha256"],
+          "additionalProperties": false
+        }
+      ],
+      "description": "none, or the adopted canary options and the checksum of the canary list loaded (Evaluation interfaces 5.3 and 10.1)."
+    },
+    "check_result": {
+      "type": "object",
+      "description": "The result of a check that stopped a run or batch where no code applies (Run records 2.3; Evaluation interfaces 10.2, run_end).",
+      "properties": {
+        "entry": {
+          "enum": ["input_check", "schema_check"],
+          "description": "Proposed name. The run-log entry that carries the result (Run records 2.3)."
+        },
+        "result": {"enum": ["checksum_mismatch", "wrong_folder"], "description": "Proposed name."}
+      },
+      "required": ["entry", "result"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"entry": {"const": "schema_check"}}, "required": ["entry"]},
+          "then": {"properties": {"result": {"const": "checksum_mismatch"}}}
+        }
+      ]
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "code": {
+      "enum": [
+        "unknown_tool",
+        "not_admitted",
+        "packet_too_large",
+        "packet_check_failed",
+        "startup_check_failed",
+        "not_json",
+        "not_in_format",
+        "truncated",
+        "crashed",
+        "failure_form",
+        "route_refused",
+        "containment_hit",
+        "canary_hit",
+        "runaway_guard",
+        "home_not_empty",
+        "xml_refused",
+        "cap_hit",
+        "monitor_incomplete"
+      ],
+      "description": "A run-log code: the Stage 1 codes of Roles 8.7, home_not_empty, xml_refused, cap_hit and monitor_incomplete included, and of Handoffs 2.13. How the run log records those four is in Run records 2.8."
+    },
+    "condition": {"enum": ["zero_shot", "few_shot"], "description": "The condition (Evaluation interfaces 1.2 and 3.3)."},
+    "evaluation_plan_ref": {
+      "type": "object",
+      "description": "The evaluation-plan version that a held-out assessment references (Evaluation interfaces 4.8 and 7.1, rule 9): its plan_version and the file reference of the stored plan file, with its checksum. Fixed when the batch starts; a later plan version never changes it.",
+      "properties": {
+        "plan_version": {"type": "string", "minLength": 1, "description": "The plan's version, as the plan file holds it (Evaluation interfaces 4.8)."},
+        "plan": {"$ref": "#/$defs/file_ref", "description": "Proposed name. The stored plan file."}
+      },
+      "required": ["plan_version", "plan"],
+      "additionalProperties": false
+    },
+    "file_ref": {
+      "type": "object",
+      "description": "A file reference (Run records 1.2): how a run-log entry names a stored file, by its artifact id, its place in the run or batch folder, its checksum, its size in bytes and its media type. File references exist in the run log only, never in a record file, handoff or packet.",
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The file's artifact id (Handoffs 2.1)."},
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/]",
+          "description": "Proposed name. The file's place in the run or batch folder (Run records 2.2), relative to that folder."
+        },
+        "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The file's checksum (Run records 2.9)."},
+        "bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. The file's size in bytes."},
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(\\s*;.*)?$",
+          "description": "Proposed name. The file's media type, for example application/json."
+        }
+      },
+      "required": ["artifact_id", "path", "sha256", "bytes", "media_type"],
+      "additionalProperties": false
+    },
+    "item_lists": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_list_id": {"type": "string", "minLength": 1, "description": "The item list's id."},
+          "version": {"type": "string", "minLength": 1, "description": "Proposed name. The item list's version."}
+        },
+        "required": ["item_list_id", "version"],
+        "additionalProperties": false
+      },
+      "description": "The item lists of the batch, with their ids and versions (Run records 2.3; Evaluation interfaces 10.1, items)."
+    },
+    "stop_cause": {
+      "type": "object",
+      "description": "What stopped it: the code, or, where none applies, the result of the check, or the software step that failed (Run records 2.3; Evaluation interfaces 10.1 and 10.4). Exactly one.",
+      "properties": {
+        "code": {"$ref": "#/$defs/code"},
+        "check_result": {"$ref": "#/$defs/check_result", "description": "Proposed name."},
+        "software_step": {
+          "enum": ["assembly_step", "deterministic_verifier", "answer_application", "final_generation_step"],
+          "description": "A software step that could not finish or failed its self-check (Evaluation interfaces 10.4)."
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [{"required": ["code"]}, {"required": ["check_result"]}, {"required": ["software_step"]}]
+    },
+    "tuning_disclosure": {
+      "type": "object",
+      "description": "The tuning disclosure that Tillman Heisner records before a held-out assessment, with the key names that Evaluation interfaces 4.8 proposes: whether information from its test entries, their outputs or their scores informed tuning of the workflow being assessed. Software checks that it is present and reports what it says; it cannot show that no information was used. Where it says so, assessment on the entries it names is reported as not held out for that workflow, whatever its version number (Evaluation interfaces 6, rule 9, and 10.7).",
+      "properties": {
+        "test_information_used": {"type": "boolean", "description": "true when such information informed tuning."},
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1},
+          "description": "With test_information_used true: the test entries concerned, by STRENDA DB identifier, as the input-set manifest names them (Evaluation interfaces 3.1)."
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1},
+          "description": "With test_information_used true: the changes that the information informed, in plain words."
+        },
+        "recorded_by": {"type": "string", "minLength": 1, "description": "The named person who recorded it."},
+        "recorded_at": {"$ref": "#/$defs/utc_time", "description": "When it was recorded, before the batch started."}
+      },
+      "required": ["test_information_used", "recorded_by", "recorded_at"],
+      "additionalProperties": false,
+      "if": {"properties": {"test_information_used": {"const": true}}, "required": ["test_information_used"]},
+      "then": {"required": ["entries", "changes"]},
+      "else": {"properties": {"entries": false, "changes": false}}
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}

@@ -1,0 +1,435 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:expected-judgments-and-issues:v1.2",
+  "title": "Expected judgments and issues",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Proposal: Tillman Heisner accepts, changes or replaces it (Evaluation interfaces, section 4). What the verification agent should report for one item (section 4.4): the expected verdict for each round-1 issue except missing_optional, the issues it should add, and an optional must-not-raise list of traps. The required mode (section 4.1 rule 12) sets the row keys: in mode A the frozen issue id, kind and pointers; in mode B (source anchor, field, kind).",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Section 4.1 rule 4 leaves the file format (CSV, JSON or another) to the builder; this file describes the JSON form. Key names that section 4 does not give are marked 'Proposed name' in their description. The expected side never says uncertain (4.4). Added issues are matched by the covering rule of 4.1 rule 8; locator_xpaths feed the locator-completeness count of 4.1 rule 9 and are not part of the match. Kinds follow Issue format 0.6, 4.1. Mode keys (section 4.1 rule 12; sections 2.2 and 4.4): a file holds the rows of its mode only. Mode A rows name the frozen issue id where the item has frozen issues (judgments) and kind and pointers, which the scorer resolves in the item's frozen files. Mode B rows name (anchor, field, kind): anchor_xpath plus anchor_label as in the expected-value table (section 4.2), and field the path below the anchored object; a document-level pointer that lies in no anchored object, such as /creators, is kept as the field, with no anchor. Mode B rows carry no issue id and no pointer into a draft, because ids, pointers and object order differ from run to run; the scorer maps each generated issue to (anchor, field, kind) through the draft's evidence entries, and an issue whose pointers map to several (anchor, field) pairs is matched by the covering rule of 4.1 rule 8 against one row per pair. A generated issue or judgment that maps to no anchor, to several, or to an anchor already taken by a duplicate object goes to the review list (4.1 rules 5 and 12), never scored silently. Not expressed here: that a mode A issue id exists in the item's frozen files, and that an anchor exists in the input.",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The item the file is for (4.1 rule 1)."
+    },
+    "variant_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The variant the file is for (4.1 rule 1)."
+    },
+    "input_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/input_file"},
+      "description": "Proposed name. The input-side files the expected file was built for, each with its SHA-256 (4.1 rule 1). If a checksum no longer matches, the scorer skips the item and reports it."
+    },
+    "evaluation_interfaces_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. The version of design/EVALUATION_INTERFACES.md the file follows (4.1 rule 1)."
+    },
+    "expected_file_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Proposed name. The version of this expected file; a reviewed finding goes into a new version, and scores name it (4.1 rule 5)."
+    },
+    "issue_format_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The issue-format version the expected issues follow (4.1 rule 1; 4.3), for example 0.6. Key name as in design/HANDOFFS.md 2.7."
+    },
+    "mode": {
+      "enum": ["A", "B"],
+      "description": "The evaluation mode whose keys the rows use (section 4.1 rule 12): A, rows keyed by frozen issue id, kind and pointers; B, rows keyed by (source anchor, field, kind)."
+    },
+    "canary": {
+      "type": "string",
+      "minLength": 32,
+      "description": "Only if canaries are adopted (5.3): the file's canary, random and at least 32 characters long. Option CS7, a canary in every row, would add a row field."
+    },
+    "judgments": {
+      "type": "array",
+      "description": "Proposed name. Expected judgments (4.4), rows of the file's mode."
+    },
+    "issues": {
+      "type": "array",
+      "description": "Proposed name. Expected issues the agent should add, planted and natural (4.4), rows of the file's mode."
+    },
+    "must_not_raise": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/trap_row"},
+      "description": "Proposed name. Optional must-not-raise list: traps where any finding would be a false alarm (4.4). In mode B a trap names no pointers."
+    }
+  },
+  "required": [
+    "input_files",
+    "evaluation_interfaces_version",
+    "expected_file_version",
+    "issue_format_version",
+    "mode",
+    "judgments",
+    "issues"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {"anyOf": [{"required": ["item_id"]}, {"required": ["variant_id"]}]},
+    {
+      "$comment": "Section 4.1 rule 12, mode A: frozen issue ids, kinds and pointers.",
+      "if": {"properties": {"mode": {"const": "A"}}, "required": ["mode"]},
+      "then": {
+        "properties": {
+          "judgments": {"items": {"$ref": "#/$defs/judgment_row_a"}},
+          "issues": {"items": {"$ref": "#/$defs/issue_row_a"}}
+        }
+      }
+    },
+    {
+      "$comment": "Section 4.1 rule 12, mode B: (source anchor, field, kind); no issue ids and no pointers into a draft.",
+      "if": {"properties": {"mode": {"const": "B"}}, "required": ["mode"]},
+      "then": {
+        "properties": {
+          "judgments": {"items": {"$ref": "#/$defs/judgment_row_b"}},
+          "issues": {"items": {"$ref": "#/$defs/issue_row_b"}},
+          "must_not_raise": {"items": {"properties": {"fields": false}}}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "pointer": {
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)*$",
+      "description": "A JSON Pointer into the EnzymeML document, for example /measurements/0/ph (Issue format 2). For software only; scientists never see pointers."
+    },
+    "issue_id": {
+      "type": "string",
+      "pattern": "^ISS-[0-9]{3,}$(?![\\s\\S])",
+      "description": "An issue id: ISS-001 and so on (Issue format 4). Written by software, never by an agent."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9A-Fa-f]{64}$(?![\\s\\S])",
+      "description": "A SHA-256 checksum: 64 hexadecimal characters, computed by software (Evaluation interfaces 3.1)."
+    },
+    "input_file": {
+      "type": "object",
+      "description": "One input-side file the expected file was built for, with its checksum (4.1 rule 1). Field names from Evaluation interfaces 3.1.",
+      "properties": {
+        "file_name": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["file_name", "sha256"],
+      "additionalProperties": false
+    },
+    "judgment_row_a": {
+      "type": "object",
+      "description": "A mode A expected judgment: the issue's id in the frozen packet, its kind and pointers, and the expected verdict (4.4).",
+      "properties": {
+        "issue_id": {
+          "$ref": "#/$defs/issue_id",
+          "description": "The issue's id in the frozen packet."
+        },
+        "kind": {
+          "enum": [
+            "missing_required",
+            "missing_recommended",
+            "wrong_type",
+            "broken_reference",
+            "bad_citation",
+            "wrong_unit"
+          ],
+          "description": "The issue's kind; missing_optional issues get no expected judgment."
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/pointer"},
+          "description": "Proposed name, after the issue field it is matched with. The pointer or set of pointers (Issue format 4, fields)."
+        },
+        "expected_verdict": {
+          "enum": ["confirmed", "rejected"],
+          "description": "Proposed name. The expected verdict; never uncertain."
+        },
+        "note": {"type": "string", "minLength": 1, "description": "Proposed name. Optional short note, for reading only."},
+        "pending": {
+          "type": "boolean",
+          "description": "Proposed name. true for a row not yet settled: left out of scores and listed (4.1 rule 3). Frozen test-set files hold no pending rows."
+        }
+      },
+      "required": ["issue_id", "kind", "fields", "expected_verdict"],
+      "additionalProperties": false
+    },
+    "judgment_row_b": {
+      "type": "object",
+      "description": "A mode B expected judgment: the judged issue's (source anchor, field, kind) and the expected verdict (4.4; 4.1 rule 12).",
+      "properties": {
+        "anchor_xpath": {"$ref": "#/$defs/anchor_xpath"},
+        "anchor_label": {"$ref": "#/$defs/anchor_label"},
+        "field": {"$ref": "#/$defs/anchor_field"},
+        "kind": {"$ref": "#/$defs/judgment_row_a/properties/kind"},
+        "expected_verdict": {"$ref": "#/$defs/judgment_row_a/properties/expected_verdict"},
+        "note": {"$ref": "#/$defs/judgment_row_a/properties/note"},
+        "pending": {"$ref": "#/$defs/judgment_row_a/properties/pending"}
+      },
+      "required": ["field", "kind", "expected_verdict"],
+      "additionalProperties": false,
+      "allOf": [{"$ref": "#/$defs/document_level_field"}],
+      "examples": [
+        {
+          "field": "/creators",
+          "kind": "missing_required",
+          "expected_verdict": "confirmed",
+          "note": "Document-level: no anchor."
+        }
+      ]
+    },
+    "issue_row_a": {
+      "type": "object",
+      "description": "A mode A expected added issue: its kind and pointers (4.4).",
+      "properties": {
+        "kind": {
+          "enum": ["wrong_unit", "source_conflict", "wrong_value", "missed_value"],
+          "description": "A kind the verification agent may raise (Issue format 4.1)."
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/pointer"},
+          "description": "Proposed name, after the issue field it is matched with. The pointer or set of pointers (Issue format 4, fields)."
+        },
+        "locator_xpaths": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "Proposed name. The xpaths the issue's locators should include: for source_conflict, both sides; for wrong_value and missed_value, the xpath that states the source value (4.4)."
+        },
+        "note": {"$ref": "#/$defs/judgment_row_a/properties/note"},
+        "pending": {
+          "type": "boolean",
+          "description": "Proposed name. true for a row not yet settled: left out of scores and listed (4.1 rule 3). Frozen test-set files hold no pending rows."
+        }
+      },
+      "required": ["kind", "fields"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {"kind": {"enum": ["source_conflict", "wrong_value", "missed_value"]}},
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["locator_xpaths"],
+            "properties": {"locator_xpaths": {"minItems": 1}}
+          }
+        }
+      ],
+      "examples": [
+        {
+          "kind": "source_conflict",
+          "fields": ["/measurements/0/ph", "/measurements/1/ph"],
+          "locator_xpaths": [
+            "/experiment/datasets/dataset[1]/assayConditions/value[2]/@value",
+            "/experiment/datasets/dataset[2]/assayConditions/value[2]/@value",
+            "/experiment/methodology"
+          ]
+        }
+      ]
+    },
+    "issue_row_b": {
+      "type": "object",
+      "description": "A mode B expected added issue: (source anchor, field, kind), one row per (anchor, field) pair (4.4; 4.1 rule 12).",
+      "properties": {
+        "anchor_xpath": {"$ref": "#/$defs/anchor_xpath"},
+        "anchor_label": {"$ref": "#/$defs/anchor_label"},
+        "field": {"$ref": "#/$defs/anchor_field"},
+        "kind": {"$ref": "#/$defs/issue_row_a/properties/kind"},
+        "locator_xpaths": {"$ref": "#/$defs/issue_row_a/properties/locator_xpaths"},
+        "note": {"$ref": "#/$defs/judgment_row_a/properties/note"},
+        "pending": {"$ref": "#/$defs/issue_row_a/properties/pending"}
+      },
+      "required": ["field", "kind"],
+      "additionalProperties": false,
+      "allOf": [
+        {"$ref": "#/$defs/document_level_field"},
+        {
+          "if": {
+            "properties": {"kind": {"enum": ["source_conflict", "wrong_value", "missed_value"]}},
+            "required": ["kind"]
+          },
+          "then": {
+            "required": ["locator_xpaths"],
+            "properties": {"locator_xpaths": {"minItems": 1}}
+          }
+        }
+      ],
+      "examples": [
+        {
+          "anchor_xpath": "/experiment/datasets/dataset[1]",
+          "field": "ph",
+          "kind": "source_conflict",
+          "locator_xpaths": [
+            "/experiment/datasets/dataset[1]/assayConditions/value[2]/@value",
+            "/experiment/methodology"
+          ]
+        },
+        {
+          "anchor_xpath": "/experiment/datasets/dataset[2]",
+          "field": "ph",
+          "kind": "source_conflict",
+          "locator_xpaths": [
+            "/experiment/datasets/dataset[2]/assayConditions/value[2]/@value",
+            "/experiment/methodology"
+          ]
+        }
+      ]
+    },
+    "anchor_xpath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mode B. The input element the object comes from, as in the expected-value table (4.2); for an object only free text states, /experiment/methodology. Absent for a document-level field."
+    },
+    "anchor_label": {
+      "type": "string",
+      "description": "Mode B. Blank for structured anchors; for a methodology anchor, a short label that tells objects of one type apart (4.2)."
+    },
+    "anchor_field": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Mode B. The path below the anchored object, for example ph; for a document-level pointer that lies in no anchored object, the pointer itself, for example /creators (4.1 rule 12)."
+    },
+    "document_level_field": {
+      "$comment": "Section 4.1 rule 12: a document-level pointer that lies in no anchored object is kept as it is, with no anchor.",
+      "if": {"not": {"required": ["anchor_xpath"]}},
+      "then": {"properties": {"field": {"$ref": "#/$defs/pointer"}, "anchor_label": false}}
+    },
+    "trap_row": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. The trap, for example the same amount in two units."
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/pointer"},
+          "description": "Proposed name. Pointers where no finding is expected, if the trap has them."
+        },
+        "xpaths": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "description": "Proposed name. The input places of the trap."
+        },
+        "pending": {
+          "type": "boolean",
+          "description": "Proposed name. true for a row not yet settled: left out of scores and listed (4.1 rule 3). Frozen test-set files hold no pending rows."
+        }
+      },
+      "required": ["description"],
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "item_id": "IT-0042",
+      "input_files": [
+        {
+          "file_name": "IT-0042-issues.json",
+          "sha256": "4d756367a4605e43cfbd654e66a4f01296f7678c50ec287c156a5f07b617c508"
+        }
+      ],
+      "evaluation_interfaces_version": "1.2",
+      "expected_file_version": "1",
+      "issue_format_version": "0.6",
+      "mode": "A",
+      "judgments": [
+        {
+          "issue_id": "ISS-003",
+          "kind": "bad_citation",
+          "fields": [
+            "/parameters/0/value"
+          ],
+          "expected_verdict": "confirmed"
+        }
+      ],
+      "issues": [
+        {
+          "kind": "source_conflict",
+          "fields": [
+            "/measurements/0/ph",
+            "/measurements/1/ph"
+          ],
+          "locator_xpaths": [
+            "/experiment/datasets/dataset[1]/assayConditions/value[2]/@value",
+            "/experiment/datasets/dataset[2]/assayConditions/value[2]/@value",
+            "/experiment/methodology"
+          ]
+        }
+      ],
+      "must_not_raise": [
+        {
+          "description": "Phenazine methosulfate given as 0.4mM in the methods text and 400.0 microM in the datasets: the same amount in two units.",
+          "xpaths": [
+            "/experiment/methodology"
+          ]
+        }
+      ]
+    },
+    {
+      "item_id": "IT-0101",
+      "input_files": [
+        {
+          "file_name": "IT-0101-input.xml",
+          "sha256": "b81e2f04c7d93a5e6f10a8c4d2e7b95f3a06c1d8e4f27b9a5c3d0e6f18a2b7c4"
+        }
+      ],
+      "evaluation_interfaces_version": "1.2",
+      "expected_file_version": "1",
+      "issue_format_version": "0.6",
+      "mode": "B",
+      "judgments": [
+        {
+          "field": "/creators",
+          "kind": "missing_required",
+          "expected_verdict": "confirmed"
+        },
+        {
+          "anchor_xpath": "/experiment/datasets/dataset[1]/resultSet/kineticParameter/value[2]",
+          "field": "value",
+          "kind": "bad_citation",
+          "expected_verdict": "confirmed"
+        }
+      ],
+      "issues": [
+        {
+          "anchor_xpath": "/experiment/datasets/dataset[1]",
+          "field": "ph",
+          "kind": "source_conflict",
+          "locator_xpaths": [
+            "/experiment/datasets/dataset[1]/assayConditions/value[2]/@value",
+            "/experiment/methodology"
+          ]
+        },
+        {
+          "anchor_xpath": "/experiment/datasets/dataset[2]",
+          "field": "ph",
+          "kind": "source_conflict",
+          "locator_xpaths": [
+            "/experiment/datasets/dataset[2]/assayConditions/value[2]/@value",
+            "/experiment/methodology"
+          ]
+        }
+      ],
+      "must_not_raise": [
+        {
+          "description": "Phenazine methosulfate given as 0.4mM in the methods text and 400.0 microM in the datasets: the same amount in two units.",
+          "xpaths": [
+            "/experiment/methodology"
+          ]
+        }
+      ]
+    }
+  ]
+}

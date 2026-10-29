@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:evaluation-plan:v1.4",
+  "title": "Evaluation plan",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.4 (Draft); the document wins. Draft: ARIADNE specifies this format and Tillman Heisner freezes its version (section 1.3; D9 A). One version of the evaluation plan (section 4.8): the continuation criteria of section 4.7, rule 4, for Stage 1 held-out assessment, which Tillman Heisner sets, approves and freezes under his interim Stage 1 authority, with the plan's version, its approval and the date of its freeze. A held-out assessment batch references one frozen version by its file reference with checksum (section 7.1, rule 9).",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.4 (Draft); the document wins. Section 4.8 proposes the key names. The file selects no threshold: criteria hold what Tillman Heisner sets, in plain words. A plan without approval and freeze is a draft, which no held-out assessment may reference; a frozen version holds at least one criterion and is never changed, and a change makes a new version (section 4.8). Meeting the criteria means that the workflow is technically ready for proposing a bounded trial with researchers; it authorizes neither the use of participants' data or effort nor a wider pilot or consortium step (section 4.7, rule 4; OPEN_QUESTIONS.md Q8). Not expressed here: that the approver is Tillman Heisner, which the admission check compares; that the file matches the checksum a batch references; whether the criteria are sound, which no check judges (section 7.1, rule 9). The example is illustrative: the version, times and the criterion texts are made up and are not proposed criteria.",
+  "type": "object",
+  "properties": {
+    "plan_version": {"type": "string", "minLength": 1, "description": "The plan's own version."},
+    "criteria": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "The continuation criteria, each in plain words (section 4.7, rule 4). This file sets no threshold."
+    },
+    "approved_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The named person who approved the version: Tillman Heisner, under his interim Stage 1 authority (section 4.8)."
+    },
+    "approved_at": {"$ref": "#/$defs/utc_time", "description": "When the version was approved."},
+    "frozen_on": {"$ref": "#/$defs/date", "description": "The date the version was frozen; it is never changed after it. Absent while it is a draft."}
+  },
+  "required": ["plan_version", "criteria"],
+  "additionalProperties": false,
+  "dependentRequired": {
+    "approved_by": ["approved_at", "frozen_on"],
+    "approved_at": ["approved_by", "frozen_on"],
+    "frozen_on": ["approved_by", "approved_at"]
+  },
+  "if": {"required": ["frozen_on"]},
+  "then": {"properties": {"criteria": {"minItems": 1}}},
+  "examples": [
+    {
+      "plan_version": "1",
+      "criteria": [
+        "<a criterion that Tillman Heisner sets, in plain words>",
+        "<another criterion>"
+      ],
+      "approved_by": "Tillman Heisner",
+      "approved_at": "2026-11-30T17:00:00Z",
+      "frozen_on": "2026-11-30"
+    }
+  ],
+  "$defs": {
+    "date": {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])", "description": "A date, YYYY-MM-DD."},
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}

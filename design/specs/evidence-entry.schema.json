@@ -1,0 +1,997 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:evidence-entry:v0.7",
+  "title": "Evidence entry",
+  "description": "Derived from ISSUE_FORMAT.md 0.7; the document wins. One entry of a record's evidence file (section 8.1): a Value entry, a Not available entry, a parameter-link entry, an override or structural-edit entry, or the approval entry. Field names that the issue format leaves open come from design/HANDOFFS.md 1.2 (Draft), which ranks below it.",
+  "$comment": "Derived from ISSUE_FORMAT.md 0.7; the document wins. The entry types are told apart by their fields; Issue format 0.7 gives them no type field. Not expressed here: that a rate-law option passed the checks of Issue format 3.1 (Rate-law bindings), which need the record; one Value entry per filled leaf field, at most one link entry per parameter, the citation check itself (8.2), and that pointers and ids exist in the record. Nor whether an entry's pointer still addresses the object id it is bound to, or whether an entry or parameter link is held (Issue format 2, Live pointer; 7.1, Live pointers): software keeps the bindings and holds in the run log, a held entry is not used, and while any binding is held the record cannot be approved (7.2 condition 5). The not-mapped entry lives in the not-mapped report and has its own file, not-mapped-entry.schema.json.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/value_entry"
+    },
+    {
+      "$ref": "#/$defs/not_available_entry"
+    },
+    {
+      "$ref": "#/$defs/parameter_link_entry"
+    },
+    {
+      "$ref": "#/$defs/human_action_entry"
+    },
+    {
+      "$ref": "#/$defs/approval_entry"
+    }
+  ],
+  "$defs": {
+    "pointer": {
+      "type": "string",
+      "pattern": "^(/([^/~]|~[01])*)*$",
+      "description": "A JSON Pointer into the EnzymeML document, for example /measurements/0/ph (Issue format 2). For software only; scientists never see pointers."
+    },
+    "issue_id": {
+      "type": "string",
+      "pattern": "^ISS-[0-9]{3,}$(?![\\s\\S])",
+      "description": "An issue id: ISS-001 and so on (Issue format 4). Written by software, never by an agent."
+    },
+    "question_id": {
+      "type": "string",
+      "pattern": "^Q-[0-9]{3,}$(?![\\s\\S])",
+      "description": "A question id: Q-001 and so on (Issue format 5.1). Written by software."
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    },
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "object_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$(?![\\s\\S])",
+      "description": "An EnzymeML object id: a letter, then at most 127 letters, digits or underscores, matching the whole string (design/HANDOFFS.md 2.1, rows EnzymeML object ids and Whole-string grammars)."
+    },
+    "leaf_value": {
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ],
+      "description": "The value of one filled leaf field: a string, a number or true/false. A null is empty and never a filled value (Issue format 2)."
+    },
+    "value_entry": {
+      "type": "object",
+      "description": "A Value entry (Issue format 8.1): one per filled leaf field, an element of a list of plain values included, with the filler-specific fields. Keep decision (resolved_by) and Correction (replaced_value with replaced_xpath) are fields of the kept or corrected value's entry.",
+      "$comment": "Key names that Issue format 0.7, 8.1 leaves open come from design/HANDOFFS.md 2.6: replaced_xpath, the xpath that a Correction keeps with replaced_value, and stated_unit, the unit spelling that an S-UNIT entry keeps, cited by the entry's own xpath and quote. Issue format 3.1 lets S-UNIT build a unit from a spelling in an answer, so an S-UNIT entry may name that answer's question. Issue format 8.1 has each S-RATELAW entry keep the confirmed rate-law option and the answer or structural edit that confirmed it; design/HANDOFFS.md 2.6 keeps them as model, bindings and question_id or action_id: the key bindings was accepted on 2026-10-28, and the others are proposed key names. xpath and quote are not required and have no pattern: a missing citation, an xpath that does not select exactly one node and a quote not in the node must reach the citation check (C-CITE) as bad_citation, not fail a format check (design/HANDOFFS.md 2.2).",
+      "properties": {
+        "pointer": {
+          "$ref": "#/$defs/pointer",
+          "description": "The filled leaf field, for example /small_molecules/0/synonymous_names/1."
+        },
+        "value": {
+          "$ref": "#/$defs/leaf_value"
+        },
+        "filled_by": {
+          "enum": [
+            "extraction_agent",
+            "software",
+            "scientist",
+            "structural_edit"
+          ],
+          "description": "Set by software from where the value came from; structural_edit for a value written by a structural edit (Issue format 6.2 and 8.1)."
+        },
+        "xpath": {
+          "type": "string",
+          "description": "Extracted value: the xpath of its locator (Issue format 2). Scientist value: kept when the chosen value equals a cited source value. S-UNIT: the citation of the extracted unit spelling in stated_unit."
+        },
+        "quote": {
+          "type": "string",
+          "description": "The shortest verbatim part of the node that states the value."
+        },
+        "interpreted": {
+          "type": "boolean",
+          "description": "true when the normaliser cannot reproduce the value; such values get only citation checks 1 and 2 (8.2)."
+        },
+        "rule_id": {
+          "enum": [
+            "S-VERSION",
+            "S-ID",
+            "S-DATES",
+            "S-UNIT",
+            "S-VESSEL",
+            "S-SYMBOL",
+            "S-RATELAW"
+          ],
+          "description": "Software value: the S-* rule that produced it (Issue format 3.1)."
+        },
+        "question_id": {
+          "$ref": "#/$defs/question_id",
+          "description": "Scientist value: the question whose answer gave it. S-UNIT value built from a unit spelling in an answer (Issue format 3.1): that answer's question. S-RATELAW value: the rate-law question whose answer confirmed the fully bound option, unless a structural edit gave it (action_id) (Issue format 3.1 and 8.1; design/HANDOFFS.md 2.6)."
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "S-RATELAW value only: the confirmed model's name from the starter list of Issue format 5.1, rule 3 (Issue format 8.1). Key name from design/HANDOFFS.md 2.6, a design rule (not part of Issue format)."
+        },
+        "bindings": {
+          "type": "object",
+          "description": "S-RATELAW value only: the rest of the confirmed rate-law option, which Issue format 3.1 (Rate-law bindings) and 8.1 have the evidence keep. The key bindings was accepted on 2026-10-28; the key names inside it are proposed, from design/HANDOFFS.md 2.6 and 2.9.",
+          "properties": {
+            "reaction_id": {"$ref": "#/$defs/object_id", "description": "Proposed name. The target reaction."},
+            "measurement_id": {"$ref": "#/$defs/object_id", "description": "Proposed name. The measurement whose context applies."},
+            "parameters": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {"$ref": "#/$defs/object_id"},
+              "description": "Proposed name. From each argument the model needs, as the starter list names it, to the id of the parameter bound to it."
+            },
+            "species": {
+              "type": "object",
+              "properties": {"S": {"$ref": "#/$defs/object_id"}, "E": {"$ref": "#/$defs/object_id"}},
+              "required": ["S"],
+              "additionalProperties": false,
+              "description": "Proposed name. From each species variable to the id of the species bound to it; E is absent for a model without the enzyme, such as the Vmax form."
+            }
+          },
+          "required": ["reaction_id", "measurement_id", "parameters", "species"],
+          "additionalProperties": false
+        },
+        "action_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "Structural-edit value: the structural edit that wrote it, which records its basis (Issue format 8.1). Field name from design/HANDOFFS.md 2.11."
+        },
+        "resolved_by": {
+          "type": "object",
+          "description": "Keep decision: the question and reason on the kept value's entry (Issue format 8.1; example in 10.1).",
+          "properties": {
+            "question_id": {
+              "$ref": "#/$defs/question_id"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "question_id",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "replaced_value": {
+          "$ref": "#/$defs/leaf_value",
+          "description": "Correction: the value that the correction replaced."
+        },
+        "replaced_xpath": {
+          "type": "string",
+          "description": "Correction: the xpath of the value that the correction replaced, where that value had one (Issue format 8.1, 'replaced_value and its xpath'). Key name from design/HANDOFFS.md 2.6."
+        },
+        "stated_unit": {
+          "type": "string",
+          "description": "S-UNIT: the unit spelling the unit was built from, as the draft or the answer gives it, for example mM (Issue format 3.1 and 8.1). Key name from design/HANDOFFS.md 2.6."
+        }
+      },
+      "required": [
+        "pointer",
+        "value",
+        "filled_by"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "replaced_xpath": [
+          "replaced_value"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "extraction_agent"
+              }
+            },
+            "required": [
+              "filled_by"
+            ]
+          },
+          "then": {
+            "properties": {
+              "rule_id": false,
+              "question_id": false,
+              "action_id": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "software"
+              }
+            },
+            "required": [
+              "filled_by"
+            ]
+          },
+          "then": {
+            "required": [
+              "rule_id"
+            ],
+            "if": {
+              "properties": {
+                "rule_id": {
+                  "const": "S-RATELAW"
+                }
+              },
+              "required": [
+                "rule_id"
+              ]
+            },
+            "else": {
+              "properties": {
+                "action_id": false
+              }
+            }
+          }
+        },
+        {
+          "$comment": "Issue format 8.2, Exceptions: software values carry their rule id instead of a citation; only S-UNIT keeps the extracted spelling's citation.",
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "software"
+              },
+              "rule_id": {
+                "not": {
+                  "const": "S-UNIT"
+                }
+              }
+            },
+            "required": [
+              "filled_by",
+              "rule_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "xpath": false,
+              "quote": false,
+              "interpreted": false
+            }
+          }
+        },
+        {
+          "$comment": "Only S-UNIT may build on an answer (Issue format 3.1); an S-RATELAW entry keeps the question whose answer confirmed the rate-law option (Issue format 8.1; design/HANDOFFS.md 2.6).",
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "software"
+              },
+              "rule_id": {
+                "not": {
+                  "enum": [
+                    "S-UNIT",
+                    "S-RATELAW"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "filled_by",
+              "rule_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "question_id": false
+            }
+          }
+        },
+        {
+          "$comment": "Issue format 3.1 and 8.1; design/HANDOFFS.md 2.6: each entry of the rate-law equation keeps the model, the bindings and either the question whose answer confirmed the option or the structural edit that gave it.",
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "software"
+              },
+              "rule_id": {
+                "const": "S-RATELAW"
+              }
+            },
+            "required": [
+              "filled_by",
+              "rule_id"
+            ]
+          },
+          "then": {
+            "required": [
+              "model",
+              "bindings"
+            ],
+            "oneOf": [
+              {
+                "required": [
+                  "question_id"
+                ],
+                "properties": {
+                  "action_id": false
+                }
+              },
+              {
+                "required": [
+                  "action_id"
+                ],
+                "properties": {
+                  "question_id": false
+                }
+              }
+            ]
+          }
+        },
+        {
+          "$comment": "design/HANDOFFS.md 2.6: only an S-RATELAW entry keeps a model name and bindings.",
+          "if": {
+            "anyOf": [
+              {
+                "required": [
+                  "model"
+                ]
+              },
+              {
+                "required": [
+                  "bindings"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "filled_by",
+              "rule_id"
+            ],
+            "properties": {
+              "filled_by": {
+                "const": "software"
+              },
+              "rule_id": {
+                "const": "S-RATELAW"
+              }
+            }
+          }
+        },
+        {
+          "$comment": "Issue format 8.1, Value, software: only an S-UNIT entry keeps a unit spelling.",
+          "if": {
+            "required": [
+              "stated_unit"
+            ]
+          },
+          "then": {
+            "required": [
+              "filled_by",
+              "rule_id"
+            ],
+            "properties": {
+              "filled_by": {
+                "const": "software"
+              },
+              "rule_id": {
+                "const": "S-UNIT"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "scientist"
+              }
+            },
+            "required": [
+              "filled_by"
+            ]
+          },
+          "then": {
+            "required": [
+              "question_id"
+            ],
+            "properties": {
+              "rule_id": false,
+              "action_id": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "structural_edit"
+              }
+            },
+            "required": [
+              "filled_by"
+            ]
+          },
+          "then": {
+            "required": [
+              "action_id"
+            ],
+            "properties": {
+              "rule_id": false,
+              "question_id": false
+            }
+          }
+        }
+      ]
+    },
+    "not_available_entry": {
+      "type": "object",
+      "description": "A Not available entry (Issue format 8.1; reason codes from 5.2 rule 6).",
+      "properties": {
+        "pointer": {
+          "$ref": "#/$defs/pointer"
+        },
+        "reason_code": {
+          "enum": [
+            "not_measured",
+            "not_at_hand",
+            "not_applicable",
+            "other"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Required with reason_code other."
+        },
+        "issue_id": {
+          "$ref": "#/$defs/issue_id"
+        },
+        "question_id": {
+          "$ref": "#/$defs/question_id"
+        }
+      },
+      "required": [
+        "pointer",
+        "reason_code",
+        "issue_id",
+        "question_id"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reason_code": {
+                "const": "other"
+              }
+            },
+            "required": [
+              "reason_code"
+            ]
+          },
+          "then": {
+            "required": [
+              "note"
+            ]
+          }
+        }
+      ]
+    },
+    "parameter_link_entry": {
+      "type": "object",
+      "description": "A parameter-link entry (Issue format 8.1, Parameter links; design/HANDOFFS.md 2.15): the parameter's pointer, and the ids of the species and the measurement it belongs to, each with a citation, where the input states them. At most one per parameter. A parameter-link issue points into this entry: its fields hold the parameter's pointer followed by /link/species_id or /link/measurement_id (Issue format 4.1 note 5), and software writes the answer to such an issue here (5.2 rule 1).",
+      "$comment": "Key names from design/HANDOFFS.md 2.6 and 2.15: pointer, link, and link_evidence with one object per link present. A keep decision or correction of a link sits in that link's object. The ids have no pattern, so that a marker reaches C-REF; citations are not required, so that a missing one reaches the citation check.",
+      "properties": {
+        "pointer": {
+          "$ref": "#/$defs/pointer",
+          "description": "The parameter's pointer, for example /parameters/0."
+        },
+        "link": {
+          "type": "object",
+          "description": "The parameter's links, where the input states them or an answer gives them.",
+          "properties": {
+            "species_id": {
+              "type": "string",
+              "description": "The id of the species the parameter belongs to (link.species_id)."
+            },
+            "measurement_id": {
+              "type": "string",
+              "description": "The id of the measurement (dataset) the parameter comes from (link.measurement_id)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "link_evidence": {
+          "type": "object",
+          "description": "Where each link came from, one object per link present, under the same key as the link (design/HANDOFFS.md 2.15).",
+          "properties": {
+            "species_id": {
+              "$ref": "#/$defs/link_evidence_item"
+            },
+            "measurement_id": {
+              "$ref": "#/$defs/link_evidence_item"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "pointer",
+        "link"
+      ],
+      "additionalProperties": false
+    },
+    "human_action_entry": {
+      "type": "object",
+      "description": "An Override or Structural edit entry (Issue format 8.1: 'As in section 6'), recorded by a named person working on the record (Issue format 6). Field names from design/HANDOFFS.md 2.11, without its context, the edited record and the mapping of held items.",
+      "$comment": "Issue format 6.1 records an override with the reason code, note, link, person (by) and time (at); 6.2 has every structural edit record its basis: source locators that clearly state the change, an explicit human statement, or both. A person's explanation alone is a statement, never source evidence: it goes into basis.statement.text, and basis.source holds only locators {xpath, quote}. Whether a source is clear enough to stand without a statement is the named person's judgment (6.2); the Locator rule for basis.source and that a statement's question_id names an answer of the record with a note or a named rate model are checks before the action is applied (design/HANDOFFS.md 2.11) and are not expressed here. The key names basis, source, statement, text, split_ids and merged_ids are proposed in design/HANDOFFS.md 2.11; a structural edit that splits or merges objects declares their ids in split_ids and merged_ids (Issue format 6.2 and 7.1). reason_code and link belong to an override; note is an override's note (6.1) or a structural edit's optional explanation, never evidence (6.2; design/HANDOFFS.md 2.11). The mapping of held items (action map, design/HANDOFFS.md 2.11) writes no value and is not an evidence entry (Issue format 8.1); disposing of a held item is a structural edit. Assisted entry (6.3): by stays the author; entered_by and original_ref name the person who entered it and the stored original's artifact id (design/RUN_RECORDS.md 1.2 keeps full file references in the run log only).",
+      "properties": {
+        "action_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "For example HA-001; never reused within a record."
+        },
+        "action": {
+          "enum": [
+            "override",
+            "structural_edit"
+          ]
+        },
+        "issue_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/issue_id"
+          },
+          "description": "The issues the action closes."
+        },
+        "reason_code": {
+          "enum": [
+            "checker_false_positive",
+            "known_external_defect",
+            "other"
+          ],
+          "description": "Override only (Issue format 6.1)."
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "For an override, as Issue format 6.1 requires. For a structural edit, optional: an explanation for readers (Issue format 6.2), never evidence and never part of the basis; a statement the edit rests on goes into basis.statement.text."
+        },
+        "link": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Override with known_external_defect: a link to the known defect."
+        },
+        "basis": {
+          "type": "object",
+          "description": "Structural edit only, and required for every one (Issue format 6.2, Basis): source, statement, or both. Key names proposed in design/HANDOFFS.md 2.11.",
+          "properties": {
+            "source": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/locator"
+              },
+              "description": "One or more locators {xpath, quote} in the input that clearly state the change (Issue format 6.2). Never a person's explanation."
+            },
+            "statement": {
+              "description": "An explicit human statement (Issue format 6.2): {question_id} for an answer's note, a 'The question does not fit' note or a named rate model, which the answer already holds; or {text} for a statement entered for the edit, stored unchanged (design/HANDOFFS.md 2.11).",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "question_id": {
+                      "$ref": "#/$defs/question_id"
+                    }
+                  },
+                  "required": [
+                    "question_id"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "source"
+              ]
+            },
+            {
+              "required": [
+                "statement"
+              ]
+            }
+          ]
+        },
+        "changed_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pointer"
+          },
+          "description": "The pointers whose values the edit changed; computed by software."
+        },
+        "split_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/object_id"
+          },
+          "description": "Structural edit only, optional: the ids of the objects the edit split (design/HANDOFFS.md 2.11). Live pointers bound to them are held, never retargeted by a guessed mapping (Issue format 7.1, Live pointers)."
+        },
+        "merged_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/object_id"
+          },
+          "description": "Structural edit only, optional: the ids of the objects the edit merged (design/HANDOFFS.md 2.11). Live pointers bound to them are held, never retargeted by a guessed mapping (Issue format 7.1, Live pointers)."
+        },
+        "by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The named person who took the action, its author (Issue format 6)."
+        },
+        "at": {
+          "$ref": "#/$defs/utc_time",
+          "description": "When the action was recorded (Issue format 6)."
+        },
+        "entered_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Only for assisted entry: the named person who entered the action for its author (Issue format 6.3)."
+        },
+        "original_ref": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "With entered_by: the file reference of the author's original message, stored unchanged (Issue format 6.3), given as the stored original's artifact id; the run log's human_act entry names that stored file, with its full file reference, as original (design/RUN_RECORDS.md 2.3)."
+        }
+      },
+      "required": [
+        "action_id",
+        "action",
+        "by",
+        "at"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "entered_by": [
+          "original_ref"
+        ],
+        "original_ref": [
+          "entered_by"
+        ]
+      },
+      "allOf": [
+        {
+          "$comment": "Issue format 6.1: an override closes issues and needs a reason code; it has no basis, and overrides keep their own reason-code rules (6.2).",
+          "if": {
+            "properties": {
+              "action": {
+                "const": "override"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason_code",
+              "issue_ids"
+            ],
+            "properties": {
+              "issue_ids": {
+                "minItems": 1
+              },
+              "basis": false,
+              "split_ids": false,
+              "merged_ids": false
+            }
+          }
+        },
+        {
+          "$comment": "Issue format 6.2: every structural edit records its basis, whatever it addresses; reason_code and link are an override's, and a structural edit's note is optional (design/HANDOFFS.md 2.11).",
+          "if": {
+            "properties": {
+              "action": {
+                "const": "structural_edit"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "basis"
+            ],
+            "properties": {
+              "reason_code": false,
+              "link": false
+            }
+          }
+        },
+        {
+          "$comment": "Issue format 6.1, reason codes: checker_false_positive and other need a note.",
+          "if": {
+            "properties": {
+              "reason_code": {
+                "enum": [
+                  "checker_false_positive",
+                  "other"
+                ]
+              }
+            },
+            "required": [
+              "reason_code"
+            ]
+          },
+          "then": {
+            "required": [
+              "note"
+            ]
+          }
+        },
+        {
+          "$comment": "Issue format 6.1, reason codes: known_external_defect needs a link.",
+          "if": {
+            "properties": {
+              "reason_code": {
+                "const": "known_external_defect"
+              }
+            },
+            "required": [
+              "reason_code"
+            ]
+          },
+          "then": {
+            "required": [
+              "link"
+            ]
+          }
+        }
+      ]
+    },
+    "locator": {
+      "type": "object",
+      "description": "A locator {xpath, quote} into the input (Issue format 2, Locator).",
+      "properties": {
+        "xpath": {
+          "type": "string",
+          "description": "An absolute XPath 1.0 location path from the input's root element that selects exactly one node."
+        },
+        "quote": {
+          "type": "string",
+          "description": "A verbatim part of that node's string value."
+        }
+      },
+      "required": [
+        "xpath",
+        "quote"
+      ],
+      "additionalProperties": false
+    },
+    "approval_entry": {
+      "type": "object",
+      "description": "The Approval entry {approved_by, approved_at} (Issue format 7.2 and 8.1). Written only when the five conditions of 7.2 hold; removed again when a later change voids the approval.",
+      "properties": {
+        "approved_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The one named scientist who approves, the approval's author; listed among the creators (7.2 condition 4), also when another named person entered the approval (6.3)."
+        },
+        "approved_at": {
+          "$ref": "#/$defs/utc_time"
+        },
+        "entered_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional, only for assisted entry: the named person who entered the approval for its author (Issue format 6.3, 7.2 and 8.1). It confers no approval authority."
+        },
+        "original_ref": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "With entered_by: the file reference of the approver's original message, stored unchanged (Issue format 6.3 and 7.2), given as the stored original's artifact id (design/RUN_RECORDS.md 1.2 keeps full file references in the run log only; its approval entry names that stored file as original, design/RUN_RECORDS.md 2.3)."
+        }
+      },
+      "required": [
+        "approved_by",
+        "approved_at"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "entered_by": [
+          "original_ref"
+        ],
+        "original_ref": [
+          "entered_by"
+        ]
+      }
+    },
+    "link_evidence_item": {
+      "type": "object",
+      "description": "Where one parameter link came from, with the keys of a Value entry other than pointer and value (Issue format 8.1; design/HANDOFFS.md 2.15).",
+      "properties": {
+        "filled_by": {
+          "enum": [
+            "extraction_agent",
+            "scientist",
+            "structural_edit"
+          ]
+        },
+        "xpath": {
+          "type": "string",
+          "description": "The xpath of the locator that states the link (Issue format 2)."
+        },
+        "quote": {
+          "type": "string",
+          "description": "A verbatim part of that node's string value."
+        },
+        "interpreted": {
+          "type": "boolean",
+          "description": "true when the normaliser cannot reproduce the link from the quote (Issue format 8.1)."
+        },
+        "question_id": {
+          "$ref": "#/$defs/question_id"
+        },
+        "action_id": {
+          "$ref": "#/$defs/ariadne_id"
+        },
+        "resolved_by": {
+          "type": "object",
+          "description": "Keep decision: the question and reason on the kept value's entry (Issue format 8.1; example in 10.1).",
+          "properties": {
+            "question_id": {
+              "$ref": "#/$defs/question_id"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "question_id",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        "replaced_value": {
+          "type": "string"
+        },
+        "replaced_xpath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "filled_by"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "replaced_xpath": [
+          "replaced_value"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "scientist"
+              }
+            },
+            "required": [
+              "filled_by"
+            ]
+          },
+          "then": {
+            "required": [
+              "question_id"
+            ],
+            "properties": {
+              "action_id": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "structural_edit"
+              }
+            },
+            "required": [
+              "filled_by"
+            ]
+          },
+          "then": {
+            "required": [
+              "action_id"
+            ],
+            "properties": {
+              "question_id": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "filled_by": {
+                "const": "extraction_agent"
+              }
+            },
+            "required": [
+              "filled_by"
+            ]
+          },
+          "then": {
+            "properties": {
+              "question_id": false,
+              "action_id": false
+            }
+          }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "pointer": "/measurements/0/ph",
+      "value": 7.8,
+      "filled_by": "extraction_agent",
+      "xpath": "/experiment/datasets/dataset[1]/assayConditions/value[2]/@value",
+      "quote": "7.8",
+      "resolved_by": {
+        "question_id": "Q-004",
+        "reason": "scientist chose the dataset value"
+      }
+    },
+    {
+      "action_id": "HA-001",
+      "action": "structural_edit",
+      "issue_ids": [
+        "ISS-030"
+      ],
+      "basis": {
+        "statement": {
+          "question_id": "Q-006"
+        }
+      },
+      "changed_fields": [
+        "/reactions/0/modifiers/1/role"
+      ],
+      "by": "<named person>",
+      "at": "2026-10-21T09:12:00Z"
+    },
+    {
+      "pointer": "/reactions/0/modifiers/1/role",
+      "value": "<role the edit wrote>",
+      "filled_by": "structural_edit",
+      "action_id": "HA-001"
+    },
+    {
+      "approved_by": "<named scientist>",
+      "approved_at": "2026-10-22T10:30:00Z",
+      "entered_by": "<named person who entered it>",
+      "original_ref": "AR-0057"
+    }
+  ]
+}

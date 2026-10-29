@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:input-set-manifest:v1.2",
+  "title": "Input-set manifest",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Draft: ARIADNE specifies this format and Tillman Heisner freezes its version (section 1.3; D9 A). The input-set manifest (section 3.1): one row per stored STRENDA DB Export XML entry of the Q1 selection, and the manifest's own version, the version of the document it follows and the date Tillman Heisner froze it.",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Section 3.1 gives the row fields, and the list-level fields follow section 3 (List-level fields); coverage_note and rows, the key that holds the rows, are proposed. The manifest check of section 3.1 is software's, before every run; of it, this file expresses only rule 3 (T9HQ4X and GNICYO are development, every other entry test). Not expressed here: that each file's SHA-256 matches its row; that all entries of one publication group have the same split; that a test-set run has 15 to 25 entries. Checksums are lowercase (section 3). The examples are illustrative: ids, times, checksums, sizes, counts and names are made up, except the SHA-256 of the stored T9HQ4X file (8,137 bytes), which is the real value.",
+  "type": "object",
+  "properties": {
+    "manifest_version": {"type": "string", "minLength": 1, "description": "The manifest's own version."},
+    "evaluation_interfaces_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The version of design/EVALUATION_INTERFACES.md the list follows (section 3, List-level fields)."
+    },
+    "frozen_on": {
+      "$ref": "#/$defs/date",
+      "description": "The date Tillman Heisner froze it; absent while it is a draft (section 3)."
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "entry_id": {"type": "string", "minLength": 1, "description": "STRENDA DB identifier."},
+          "split": {"enum": ["development", "test"]},
+          "publication_group": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A label shared by all entries from one publication."
+          },
+          "publication_ref": {"type": "string", "minLength": 1, "description": "The publication's DOI, or none found."},
+          "publication_ref_source": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where the publication reference was read, and on which date."
+          },
+          "file_name": {"type": "string", "minLength": 1, "description": "Name of the stored Export XML file."},
+          "sha256": {"$ref": "#/$defs/checksum", "description": "SHA-256 of the stored file, computed by software."},
+          "download_date": {"$ref": "#/$defs/date"},
+          "doi_or_url": {"type": "string", "minLength": 1, "description": "The entry's DOI, or its URL if it has none."},
+          "terms_of_use": {
+            "type": "string",
+            "minLength": 1,
+            "description": "STRENDA DB terms of use as read on the download date: where they were read, and what they say about reuse."
+          },
+          "coverage_note": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Proposed name. Optional: what the file visibly contains (enzyme, kinetic parameters, units, compound roles, number of datasets, methodology text present or not), never an expected outcome."
+          }
+        },
+        "required": [
+          "entry_id",
+          "split",
+          "publication_group",
+          "publication_ref",
+          "publication_ref_source",
+          "file_name",
+          "sha256",
+          "download_date",
+          "doi_or_url",
+          "terms_of_use"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {"properties": {"entry_id": {"enum": ["T9HQ4X", "GNICYO"]}}, "required": ["entry_id"]},
+            "then": {"properties": {"split": {"const": "development"}}},
+            "else": {"properties": {"split": {"const": "test"}}}
+          }
+        ]
+      },
+      "description": "Proposed name."
+    }
+  },
+  "required": ["manifest_version", "evaluation_interfaces_version", "rows"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "manifest_version": "1",
+      "evaluation_interfaces_version": "1.2",
+      "frozen_on": "2026-12-01",
+      "rows": [
+        {
+          "entry_id": "T9HQ4X",
+          "split": "development",
+          "publication_group": "PG-01",
+          "publication_ref": "none found",
+          "publication_ref_source": "Illustrative: where the reference was searched, and on which date",
+          "file_name": "T9HQ4X.xml",
+          "sha256": "021ea7f5a55bab3dfa724cfc4df338f877e0b6c2910cac8539f20b0e6be5b9f6",
+          "download_date": "2026-10-12",
+          "doi_or_url": "https://doi.org/10.22011/strenda_db.T9HQ4X",
+          "terms_of_use": "Illustrative: where the terms were read on the download date, and what they say about reuse."
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$(?![\\s\\S])",
+      "description": "A date, YYYY-MM-DD."
+    }
+  }
+}

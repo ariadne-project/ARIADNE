@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:monitor-record:v1.1",
+  "title": "Monitor record",
+  "description": "Derived from design/RUN_RECORDS.md 1.1; the document wins. Draft. One entry of a run's monitor-log.jsonl (sections 2.3 and 2.6): one observation of monitor M1 (connections), M2 (processes) or M3 (file events) on one attempt, written by the monitor collector, part of the workflow controller's code. The monitors run on every attempt, in containment runs and real runs alike (D22 A).",
+  "$comment": "Derived from design/RUN_RECORDS.md 1.1; the document wins. Key names inside observed and explained_by, and the values of consequence, are proposed; section 2.6 describes them in words. What a consequence does is set in Run records 2.6, Containment 5.2 and Evaluation interfaces 10.4. Not expressed here: that baseline_version names the reviewed SU-01 baseline in force, and that the item named exists in it. The examples are illustrative: ids, times, checksums, sizes, counts and names are made up.",
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The entry's position in its file, counted from 1, without gaps (Run records 2.3; 2.10, rule 2)."
+    },
+    "entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Written by software, unique within the run (Run records 2.3)."
+    },
+    "run_id": {"$ref": "#/$defs/ariadne_id"},
+    "run_kind": {"$ref": "#/$defs/run_kind"},
+    "kind": {"const": "monitor"},
+    "at": {
+      "$ref": "#/$defs/utc_time",
+      "description": "When the entry was written, from the software clock (Run records 2.3)."
+    },
+    "source": {
+      "const": "monitor_collector",
+      "description": "The monitor collector writes this log (Run records 1.2 and 2.10, rule 3)."
+    },
+    "attempt_id": {"$ref": "#/$defs/ariadne_id", "description": "Links the record to the run log."},
+    "monitor": {
+      "enum": ["M1", "M2", "M3"],
+      "description": "M1 connections, M2 processes, M3 file events (Containment 2.2)."
+    },
+    "observed": {"type": "object", "description": "What the monitor observed (Run records 2.6)."},
+    "explained_by": {
+      "anyOf": [
+        {"const": "unexplained"},
+        {
+          "type": "object",
+          "properties": {
+            "baseline_item": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Proposed name. The item of the reviewed SU-01 baseline that explains it (Containment 3.2)."
+            },
+            "planted_code": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Proposed name. Containment runs only: the test whose planted code explains it."
+            }
+          },
+          "additionalProperties": false,
+          "oneOf": [{"required": ["baseline_item"]}, {"required": ["planted_code"]}]
+        }
+      ],
+      "description": "What explains the observation, or unexplained."
+    },
+    "baseline_version": {"type": "string", "minLength": 1, "description": "The baseline version used."},
+    "consequence": {
+      "enum": ["none", "suspended", "stopped", "test_failed"],
+      "description": "Proposed values. none; suspended (real run, that is a pipeline or behaviour-variant run: output discarded, run suspended, code containment_hit); stopped (run of an evaluation or measurement batch: the run is stopped and the batch stops); test_failed (containment run)."
+    }
+  },
+  "required": [
+    "seq",
+    "entry_id",
+    "run_id",
+    "run_kind",
+    "kind",
+    "at",
+    "source",
+    "attempt_id",
+    "monitor",
+    "observed",
+    "explained_by",
+    "baseline_version",
+    "consequence"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"properties": {"monitor": {"const": "M1"}}, "required": ["monitor"]},
+      "then": {"properties": {"observed": {"$ref": "#/$defs/observed_m1"}}}
+    },
+    {
+      "if": {"properties": {"monitor": {"const": "M2"}}, "required": ["monitor"]},
+      "then": {"properties": {"observed": {"$ref": "#/$defs/observed_m2"}}}
+    },
+    {
+      "if": {"properties": {"monitor": {"const": "M3"}}, "required": ["monitor"]},
+      "then": {"properties": {"observed": {"$ref": "#/$defs/observed_m3"}}}
+    },
+    {
+      "if": {"properties": {"explained_by": {"const": "unexplained"}}, "required": ["explained_by"]},
+      "then": {"properties": {"consequence": {"not": {"const": "none"}}}},
+      "else": {"properties": {"consequence": {"const": "none"}}}
+    },
+    {
+      "if": {
+        "properties": {"explained_by": {"const": "unexplained"}, "run_kind": {"enum": ["pipeline", "behaviour_variant"]}},
+        "required": ["explained_by", "run_kind"]
+      },
+      "then": {"properties": {"consequence": {"const": "suspended"}}}
+    },
+    {
+      "if": {
+        "properties": {"explained_by": {"const": "unexplained"}, "run_kind": {"enum": ["evaluation", "measurement"]}},
+        "required": ["explained_by", "run_kind"]
+      },
+      "then": {"properties": {"consequence": {"const": "stopped"}}}
+    },
+    {
+      "if": {
+        "properties": {"explained_by": {"const": "unexplained"}, "run_kind": {"const": "containment"}},
+        "required": ["explained_by", "run_kind"]
+      },
+      "then": {"properties": {"consequence": {"const": "test_failed"}}}
+    },
+    {
+      "if": {"properties": {"run_kind": {"enum": ["containment"]}}, "required": ["run_kind"]},
+      "else": {
+        "properties": {
+          "explained_by": {"anyOf": [{"const": "unexplained"}, {"type": "object", "properties": {"planted_code": false}}]}
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "seq": 3,
+      "entry_id": "M-0003",
+      "run_id": "RUN-0101",
+      "run_kind": "measurement",
+      "kind": "monitor",
+      "at": "2026-11-20T09:01:05Z",
+      "source": "monitor_collector",
+      "attempt_id": "ATT-0001",
+      "monitor": "M1",
+      "observed": {"destination_address": "10.0.0.2", "destination_port": 8080, "protocol": "tcp", "let_through": true},
+      "explained_by": {"baseline_item": "SU-01/M1/gateway"},
+      "baseline_version": "1",
+      "consequence": "none"
+    }
+  ],
+  "$defs": {
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "observed_m1": {
+      "type": "object",
+      "description": "M1: a connection attempt.",
+      "properties": {
+        "destination_address": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "destination_port": {"type": "integer", "minimum": 0, "maximum": 65535, "description": "Proposed name."},
+        "protocol": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "looked_up_name": {"type": "string", "minLength": 1, "description": "Proposed name. Any name looked up."},
+        "let_through": {"type": "boolean", "description": "Proposed name. Whether the network let it through."}
+      },
+      "required": ["destination_address", "destination_port", "protocol", "let_through"],
+      "additionalProperties": false
+    },
+    "observed_m2": {
+      "type": "object",
+      "description": "M2: a process started.",
+      "properties": {
+        "program": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "arguments": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Proposed name. Credential-shaped values masked."
+        },
+        "pid": {"type": "integer", "minimum": 0, "description": "Proposed name."},
+        "parent_pid": {"type": "integer", "minimum": 0, "description": "Proposed name."}
+      },
+      "required": ["program", "arguments", "pid", "parent_pid"],
+      "additionalProperties": false
+    },
+    "observed_m3": {
+      "type": "object",
+      "description": "M3: a file event on a writable mount.",
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "operation": {"enum": ["create", "write", "rename", "delete"], "description": "Proposed name."},
+        "size_after": {"type": "integer", "minimum": 0, "description": "Proposed name. The size afterwards, in bytes."}
+      },
+      "required": ["path", "operation", "size_after"],
+      "additionalProperties": false
+    },
+    "run_kind": {
+      "enum": ["pipeline", "evaluation", "measurement", "containment", "behaviour_variant"],
+      "description": "What kind of run the entry belongs to (Run records 2.3): pipeline; evaluation (the runs of an evaluation batch, development batches included); measurement (the runs of a measurement batch, never scored); containment (a containment suite run and its test runs, Containment 2.6); behaviour_variant (a behaviour-variant run of the prompt-injection tests, never scored and never measured). In a batch log, the batch's kind, evaluation or measurement."
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}

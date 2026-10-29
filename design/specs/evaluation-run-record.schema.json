@@ -1,0 +1,1448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:evaluation-run-record:v1.3",
+  "title": "Evaluation run record",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.3 (Draft); the document wins. Draft: ARIADNE specifies this format and Tillman Heisner freezes its version (section 1.3; D9 A). The evaluation run record of one run of an evaluation or measurement batch (sections 10.1 to 10.3): one item in one condition and one repetition. The workflow controller writes it once, when the run ends, copying each value from the source that sections 10.2 and 10.3 name; it is named by the run's evaluation_record entry (design/RUN_RECORDS.md 2.3).",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.3 (Draft); the document wins. Key names that sections 10.2 and 10.3 do not give (the parts of versions, budget_profile, packet_bytes, validation, software_steps, run_end and the result views) are marked 'Proposed name', as are those of the shared run-log definitions that Run records does not give either. The record is part of the run log, so its checksums are kept in the run log only (section 10.1; D13 A). Not expressed here: that values equal their sources in the run log; that a scorer refuses a record of kind measurement (section 11, rule 3); that both result views come from the same attempts (section 10.5). The examples are illustrative: ids, times, checksums, sizes, counts, model and route names and the max_tokens value are made up and are not proposed values, except the Hermes tag and commit and the size of the stored T9HQ4X file, which are the real values (register, section 3). Where numbers were replaced, the sizes add up: the packet of the first and the fourth example (T9HQ4X, few-shot) holds five blocks, HEADER 640 bytes, REFERENCE 30,200, EXAMPLES 12,000, INPUT 8,137 (the stored T9HQ4X file) and an empty LINK NAMES, and their ten markers, each of ten characters and a line feed, 110 bytes in all, which gives 51,087 bytes. The third example runs on a made-up measurement-only size variant of T9HQ4X, a larger copy whose INPUT block holds 131,500 bytes, so that its zero-shot packet, with an empty EXAMPLES block, is 162,450 bytes; its usage scales with the packet, 99,000 input tokens in all (1,200 uncached and 97,800 cache writes), against the 31,200 of the first example's 51,087-byte packet. The fourth example is a run under the frozen evaluation profile in which the provider reported more input tokens than the input cap (input_above_cap).",
+  "type": "object",
+  "properties": {
+    "run_id": {"$ref": "#/$defs/ariadne_id"},
+    "record_id": {"$ref": "#/$defs/ariadne_id"},
+    "round": {"const": 1},
+    "batch_id": {"$ref": "#/$defs/ariadne_id"},
+    "kind": {
+      "enum": ["evaluation", "measurement"],
+      "description": "evaluation or measurement, as the run log's run_kind records it."
+    },
+    "mode": {"enum": ["A", "B"]},
+    "step": {
+      "enum": ["extraction_agent", "deterministic_verifier", "verification_agent", "inquiry_agent", "sequence"]
+    },
+    "item_id": {"type": "string", "minLength": 1},
+    "split": {"enum": ["development", "test"]},
+    "fold": {"enum": ["dev-T9HQ4X", "dev-GNICYO", "test"]},
+    "condition": {"$ref": "#/$defs/condition", "description": "None for a deterministic-verifier run."},
+    "repetition": {"type": "integer", "minimum": 1},
+    "versions": {
+      "type": "object",
+      "description": "Versions, each marked frozen or draft (section 6, rule 8); a list's status comes from its frozen_on (section 3).",
+      "properties": {
+        "evaluation_interfaces": {
+          "type": "object",
+          "description": "Proposed name. The version of this document.",
+          "properties": {
+            "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+            "status": {"enum": ["frozen", "draft"], "description": "Proposed name."}
+          },
+          "required": ["version", "status"],
+          "additionalProperties": false
+        },
+        "input_set_manifest": {
+          "type": "object",
+          "properties": {
+            "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+            "status": {"enum": ["frozen", "draft"], "description": "Proposed name."}
+          },
+          "required": ["version", "status"],
+          "additionalProperties": false,
+          "description": "Proposed name."
+        },
+        "item_list": {
+          "type": "object",
+          "properties": {
+            "item_list_id": {"type": "string", "minLength": 1},
+            "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+            "status": {"enum": ["frozen", "draft"], "description": "Proposed name."}
+          },
+          "required": ["item_list_id", "version", "status"],
+          "additionalProperties": false,
+          "description": "Proposed name."
+        },
+        "example_manifests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "example_manifest_id": {"type": "string", "minLength": 1},
+              "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+              "status": {"enum": ["frozen", "draft"], "description": "Proposed name."}
+            },
+            "required": ["example_manifest_id", "version", "status"],
+            "additionalProperties": false
+          },
+          "description": "Proposed name."
+        },
+        "variant_list": {
+          "type": "object",
+          "description": "Proposed name. Where the run's input is an entry variant (section 3.2), measurement-only size variants included: the variant list's version, marked frozen or draft.",
+          "properties": {
+            "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+            "status": {"enum": ["frozen", "draft"], "description": "Proposed name."}
+          },
+          "required": ["version", "status"],
+          "additionalProperties": false
+        },
+        "deterministic_verifier": {
+          "type": "object",
+          "description": "Proposed name. For a run that uses the deterministic verifier: its version and the issue-format version it implements (section 7.1, rule 5).",
+          "properties": {
+            "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+            "issue_format_version": {"type": "string", "minLength": 1, "description": "Proposed name."}
+          },
+          "required": ["version", "issue_format_version"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["evaluation_interfaces", "input_set_manifest", "item_list", "example_manifests"],
+      "additionalProperties": false
+    },
+    "runtime_manifest_sha256": {
+      "$ref": "#/$defs/checksum",
+      "description": "The runtime-manifest checksum that the admission check computed for the run's attempts; absent for a mode A run of the deterministic verifier, which makes no model call, and only there."
+    },
+    "containment_report": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "The report that admitted the attempts; absent for a mode A run of the deterministic verifier, which makes no model call, and only there."
+    },
+    "hermes_tag": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The binding's hermes_pin; absent for a mode A run of the deterministic verifier, which has no attempt, and only there."
+    },
+    "hermes_commit": {
+      "$ref": "#/$defs/commit",
+      "description": "The Hermes commit that the runtime manifest binds; absent for a mode A run of the deterministic verifier, which has no attempt, and only there."
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The binding's route_id; absent for a mode A run of the deterministic verifier, which has no attempt, and only there."
+    },
+    "route_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The route record's version; absent for a mode A run of the deterministic verifier, which has no attempt, and only there."
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The dated model the route record names; absent for a mode A run of the deterministic verifier, which has no attempt, and only there."
+    },
+    "served_models": {
+      "$ref": "#/$defs/served_model",
+      "description": "The served-model ids of the run's attempts; no ids for a mode A run of the deterministic verifier, which has no attempt."
+    },
+    "generation_settings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "agent": {"$ref": "#/$defs/agent"},
+          "prompt_version": {"type": "string", "minLength": 1},
+          "max_tokens": {"type": "integer", "minimum": 1},
+          "generation_settings": {"$ref": "#/$defs/generation_settings"}
+        },
+        "required": ["agent", "prompt_version", "max_tokens", "generation_settings"],
+        "additionalProperties": false
+      },
+      "description": "Per agent (role-prompt version) of the run: max_tokens and generation_settings as the request log records them (Run records 2.5)."
+    },
+    "budget_profile": {
+      "type": "object",
+      "description": "The batch's profile, and the limit values in force per agent (section 10.2).",
+      "properties": {
+        "name": {"enum": ["development", "evaluation"], "description": "Proposed name."},
+        "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+        "decision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. Evaluation profile only: the ledger Decision that froze it."
+        },
+        "per_agent": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "agent": {"$ref": "#/$defs/agent"},
+              "prompt_version": {"type": "string", "minLength": 1},
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "max_tokens": {"type": "integer", "minimum": 1},
+                  "max_iterations": {"type": "integer", "minimum": 1},
+                  "request_limit": {"type": "integer", "minimum": 1},
+                  "wall_clock_minutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "The wall-clock guard or cap in minutes, as the attempt entries' limits record it (Run records 2.4)."
+                  },
+                  "input_cap": {"type": "integer", "minimum": 1, "description": "Evaluation profile only."}
+                },
+                "required": ["max_tokens", "max_iterations", "request_limit", "wall_clock_minutes"],
+                "additionalProperties": false
+              },
+              "stage_attempt_limit": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Proposed name. The limit on attempts per pipeline stage, which the workflow controller holds."
+              }
+            },
+            "required": ["agent", "prompt_version", "limits", "stage_attempt_limit"],
+            "additionalProperties": false
+          },
+          "description": "Proposed name."
+        }
+      },
+      "required": ["name", "version", "per_agent"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"name": {"const": "evaluation"}}, "required": ["name"]},
+          "then": {
+            "required": ["decision"],
+            "properties": {"per_agent": {"items": {"properties": {"limits": {"required": ["input_cap"]}}}}}
+          }
+        },
+        {
+          "if": {"properties": {"name": {"const": "development"}}, "required": ["name"]},
+          "then": {
+            "properties": {
+              "decision": false,
+              "per_agent": {"items": {"properties": {"limits": {"properties": {"input_cap": false}}}}}
+            }
+          }
+        }
+      ]
+    },
+    "attempts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/attempt_row"},
+      "description": "One row per agent attempt, in order."
+    },
+    "software_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": {"enum": ["assembly_step", "deterministic_verifier"], "description": "Proposed name."},
+          "version": {"type": "string", "minLength": 1, "description": "Proposed name."},
+          "output_sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name."},
+          "self_check": {"enum": ["passed", "failed"], "description": "Proposed name."}
+        },
+        "required": ["step", "version", "self_check"],
+        "additionalProperties": false
+      },
+      "description": "Each software step the run used, as the software_step entries record it."
+    },
+    "first_try_result": {"$ref": "#/$defs/result_view"},
+    "final_result": {"$ref": "#/$defs/result_view"},
+    "run_end": {"$ref": "#/$defs/run_end"},
+    "started_at": {"$ref": "#/$defs/utc_time"},
+    "ended_at": {"$ref": "#/$defs/utc_time"}
+  },
+  "required": [
+    "run_id",
+    "record_id",
+    "round",
+    "batch_id",
+    "kind",
+    "mode",
+    "step",
+    "item_id",
+    "split",
+    "fold",
+    "repetition",
+    "versions",
+    "served_models",
+    "generation_settings",
+    "budget_profile",
+    "attempts",
+    "software_steps",
+    "first_try_result",
+    "final_result",
+    "run_end",
+    "started_at",
+    "ended_at"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"properties": {"mode": {"const": "A"}}, "required": ["mode"]},
+      "then": {"properties": {"step": {"not": {"const": "sequence"}}}}
+    },
+    {
+      "if": {"properties": {"mode": {"const": "B"}}, "required": ["mode"]},
+      "then": {"properties": {"step": {"const": "sequence"}}}
+    },
+    {
+      "if": {"properties": {"step": {"const": "deterministic_verifier"}}, "required": ["step"]},
+      "then": {
+        "properties": {
+          "condition": false,
+          "runtime_manifest_sha256": false,
+          "containment_report": false,
+          "hermes_tag": false,
+          "hermes_commit": false,
+          "route_id": false,
+          "route_version": false,
+          "model": false,
+          "served_models": {"properties": {"ids": {"maxItems": 0}}},
+          "attempts": {"maxItems": 0},
+          "generation_settings": {"maxItems": 0},
+          "versions": {"required": ["deterministic_verifier"]}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"step": {"enum": ["deterministic_verifier"]}}, "required": ["step"]},
+      "else": {
+        "required": [
+          "condition",
+          "runtime_manifest_sha256",
+          "containment_report",
+          "hermes_tag",
+          "hermes_commit",
+          "route_id",
+          "route_version",
+          "model"
+        ]
+      }
+    },
+    {
+      "if": {"properties": {"step": {"const": "sequence"}}, "required": ["step"]},
+      "then": {"properties": {"versions": {"required": ["deterministic_verifier"]}}}
+    },
+    {
+      "$comment": "Section 10.4, row 3: a cap hit during an attempt is named by the attempt row's cap_hit, a hit before an attempt by run_end's cap_hit. A run that ends with code cap_hit and no run_end cap_hit was ended by a request-cap hit, which an attempt row names.",
+      "if": {
+        "properties": {
+          "run_end": {
+            "properties": {"code": {"const": "cap_hit"}},
+            "required": ["code"],
+            "not": {"required": ["cap_hit"]}
+          }
+        },
+        "required": ["run_end"]
+      },
+      "then": {
+        "properties": {
+          "attempts": {"contains": {"properties": {"cap_hit": {"const": "requests"}}, "required": ["cap_hit"]}}
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "run_id": "RUN-0101",
+      "record_id": "REC-0101",
+      "round": 1,
+      "batch_id": "BAT-0007",
+      "kind": "measurement",
+      "mode": "A",
+      "step": "extraction_agent",
+      "item_id": "IT-0003",
+      "split": "development",
+      "fold": "dev-T9HQ4X",
+      "condition": "few_shot",
+      "repetition": 1,
+      "versions": {
+        "evaluation_interfaces": {"version": "1.2", "status": "draft"},
+        "input_set_manifest": {"version": "1", "status": "draft"},
+        "item_list": {"item_list_id": "IL-EXTRACTION-DEV", "version": "1", "status": "draft"},
+        "example_manifests": [{"example_manifest_id": "EM-X-FEW-DEV-T9HQ4X", "version": "1", "status": "draft"}]
+      },
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "containment_report": "CR-0004",
+      "hermes_tag": "v2026.9.24",
+      "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+      "route_id": "ROUTE-1",
+      "route_version": "1",
+      "model": "example-model-20260101",
+      "served_models": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+      "generation_settings": [
+        {
+          "agent": "extraction_agent",
+          "prompt_version": "Extraction prompt, version 1",
+          "max_tokens": 99999,
+          "generation_settings": {
+            "reasoning": "none",
+            "sampling": {"temperature": 0},
+            "body_without_messages_sha256": "235c1a53176a271370c185324b97ef45b7961386c33f68300a58721927a62a57"
+          }
+        }
+      ],
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "per_agent": [
+          {
+            "agent": "extraction_agent",
+            "prompt_version": "Extraction prompt, version 1",
+            "limits": {"max_tokens": 99999, "max_iterations": 4, "request_limit": 10, "wall_clock_minutes": 60},
+            "stage_attempt_limit": 12
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "attempt_id": "ATT-0001",
+          "agent": "extraction_agent",
+          "part": "whole",
+          "try": "first",
+          "packet_manifest": "E-0007",
+          "packet_sha256": "136a5470104bcc0cd28aaef117bd0b783158519b810e2d5cee3cadd06e1595de",
+          "packet_bytes": {"packet": 51087, "input": 8137, "reference": 30200},
+          "prompt_id": "PR-0001",
+          "prompt_version": "Extraction prompt, version 1",
+          "reference_version": "Extraction reference, version 1",
+          "example_manifest_id": "EM-X-FEW-DEV-T9HQ4X",
+          "raw_output_sha256": "c894a50a68f9d05779c020c832cec73d597490dc26fff185761e56ecfdd37b7d",
+          "outcome": "output",
+          "validation": {"format_check": "passed", "content_findings": {"software_field_written": 1}},
+          "unknown_tool_calls": 0,
+          "requests": {"forwarded": 1, "refused": 0, "by_class": {"first": 1, "retry": 0, "continuation": 0, "unclassifiable": 0}},
+          "usage": {
+            "input_tokens": 1200,
+            "cache_write_tokens": 30000,
+            "cache_read_tokens": 0,
+            "input_total_tokens": 31200,
+            "output_tokens": 5400,
+            "reasoning_tokens": "not_reported"
+          },
+          "usage_unknown": {"categories": {}, "requests": 0},
+          "served_model": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+          "started_at": "2026-11-20T09:01:02Z",
+          "ended_at": "2026-11-20T09:07:29Z",
+          "runner_started_at": "2026-11-20T09:01:03Z",
+          "runner_ended_at": "2026-11-20T09:07:28Z"
+        }
+      ],
+      "software_steps": [],
+      "first_try_result": {"steps": [{"step": "extraction_agent", "result": "output", "attempt_ids": ["ATT-0001"]}]},
+      "final_result": {"steps": [{"step": "extraction_agent", "result": "output", "attempt_ids": ["ATT-0001"]}]},
+      "run_end": {"end": "completed"},
+      "started_at": "2026-11-20T09:00:05Z",
+      "ended_at": "2026-11-20T09:07:40Z"
+    },
+    {
+      "run_id": "RUN-0102",
+      "record_id": "REC-0102",
+      "round": 1,
+      "batch_id": "BAT-0008",
+      "kind": "evaluation",
+      "mode": "A",
+      "step": "deterministic_verifier",
+      "item_id": "IT-0201",
+      "split": "development",
+      "fold": "dev-GNICYO",
+      "repetition": 1,
+      "versions": {
+        "evaluation_interfaces": {"version": "1.2", "status": "draft"},
+        "input_set_manifest": {"version": "1", "status": "draft"},
+        "item_list": {"item_list_id": "IL-VERIFIER-DEV", "version": "1", "status": "draft"},
+        "example_manifests": [],
+        "deterministic_verifier": {"version": "0.1", "issue_format_version": "0.6"}
+      },
+      "served_models": {"ids": [], "not_reported": 0, "flagged": false},
+      "generation_settings": [],
+      "budget_profile": {"name": "development", "version": "dev-1", "per_agent": []},
+      "attempts": [],
+      "software_steps": [
+        {
+          "step": "deterministic_verifier",
+          "version": "0.1",
+          "output_sha256": "aab2da05dc2e2d7f73e32f42e75e0ef81211a1ce0a3b56b230b12ec51887967f",
+          "self_check": "passed"
+        }
+      ],
+      "first_try_result": {"steps": [{"step": "deterministic_verifier", "result": "output"}]},
+      "final_result": {"steps": [{"step": "deterministic_verifier", "result": "output"}]},
+      "run_end": {"end": "completed"},
+      "started_at": "2026-11-20T10:00:05Z",
+      "ended_at": "2026-11-20T10:00:09Z"
+    },
+    {
+      "run_id": "RUN-0104",
+      "record_id": "REC-0104",
+      "round": 1,
+      "batch_id": "BAT-0007",
+      "kind": "measurement",
+      "mode": "A",
+      "step": "extraction_agent",
+      "item_id": "IT-0004",
+      "split": "development",
+      "fold": "dev-T9HQ4X",
+      "condition": "zero_shot",
+      "repetition": 1,
+      "versions": {
+        "evaluation_interfaces": {"version": "1.2", "status": "draft"},
+        "input_set_manifest": {"version": "1", "status": "draft"},
+        "item_list": {"item_list_id": "IL-EXTRACTION-DEV", "version": "1", "status": "draft"},
+        "example_manifests": [{"example_manifest_id": "EM-X-ZERO-DEV-T9HQ4X", "version": "1", "status": "draft"}],
+        "variant_list": {"version": "1", "status": "draft"}
+      },
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "containment_report": "CR-0004",
+      "hermes_tag": "v2026.9.24",
+      "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+      "route_id": "ROUTE-1",
+      "route_version": "1",
+      "model": "example-model-20260101",
+      "served_models": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+      "generation_settings": [
+        {
+          "agent": "extraction_agent",
+          "prompt_version": "Extraction prompt, version 1",
+          "max_tokens": 99999,
+          "generation_settings": {
+            "reasoning": "none",
+            "sampling": {"temperature": 0},
+            "body_without_messages_sha256": "235c1a53176a271370c185324b97ef45b7961386c33f68300a58721927a62a57"
+          }
+        }
+      ],
+      "budget_profile": {
+        "name": "development",
+        "version": "dev-1",
+        "per_agent": [
+          {
+            "agent": "extraction_agent",
+            "prompt_version": "Extraction prompt, version 1",
+            "limits": {"max_tokens": 99999, "max_iterations": 4, "request_limit": 10, "wall_clock_minutes": 60},
+            "stage_attempt_limit": 12
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "attempt_id": "ATT-0041",
+          "agent": "extraction_agent",
+          "part": "whole",
+          "try": "first",
+          "packet_manifest": "E-0007",
+          "packet_sha256": "d8fab36b76c0dc0b780356ac389d23311c9787d4d03cde84caed6b83692f851c",
+          "packet_bytes": {"packet": 162450, "input": 131500, "reference": 30200},
+          "prompt_id": "PR-0001",
+          "prompt_version": "Extraction prompt, version 1",
+          "reference_version": "Extraction reference, version 1",
+          "example_manifest_id": "EM-X-ZERO-DEV-T9HQ4X",
+          "raw_output_sha256": "7fdb2a6b427f91b24e71baf5ec35037b2c7f7e0c483de4157c3124a64bc09b55",
+          "outcome": "output",
+          "validation": {"format_check": "passed", "content_findings": {"software_field_written": 1}},
+          "unknown_tool_calls": 0,
+          "requests": {"forwarded": 1, "refused": 0, "by_class": {"first": 1, "retry": 0, "continuation": 0, "unclassifiable": 0}},
+          "usage": {
+            "input_tokens": 1200,
+            "cache_write_tokens": 97800,
+            "cache_read_tokens": 0,
+            "input_total_tokens": 99000,
+            "output_tokens": 5400,
+            "reasoning_tokens": "not_reported"
+          },
+          "usage_unknown": {"categories": {}, "requests": 0},
+          "served_model": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+          "started_at": "2026-11-20T11:01:02Z",
+          "ended_at": "2026-11-20T11:14:29Z",
+          "runner_started_at": "2026-11-20T11:01:03Z",
+          "runner_ended_at": "2026-11-20T11:14:28Z"
+        }
+      ],
+      "software_steps": [],
+      "first_try_result": {"steps": [{"step": "extraction_agent", "result": "output", "attempt_ids": ["ATT-0041"]}]},
+      "final_result": {"steps": [{"step": "extraction_agent", "result": "output", "attempt_ids": ["ATT-0041"]}]},
+      "run_end": {"end": "completed"},
+      "started_at": "2026-11-20T11:00:05Z",
+      "ended_at": "2026-11-20T11:14:40Z"
+    },
+    {
+      "run_id": "RUN-0401",
+      "record_id": "REC-0401",
+      "round": 1,
+      "batch_id": "BAT-0009",
+      "kind": "evaluation",
+      "mode": "A",
+      "step": "extraction_agent",
+      "item_id": "IT-0003",
+      "split": "development",
+      "fold": "dev-T9HQ4X",
+      "condition": "few_shot",
+      "repetition": 1,
+      "versions": {
+        "evaluation_interfaces": {"version": "1.2", "status": "draft"},
+        "input_set_manifest": {"version": "1", "status": "draft"},
+        "item_list": {"item_list_id": "IL-EXTRACTION-DEV", "version": "1", "status": "draft"},
+        "example_manifests": [{"example_manifest_id": "EM-X-FEW-DEV-T9HQ4X", "version": "1", "status": "draft"}]
+      },
+      "runtime_manifest_sha256": "d1f31e2a4a0eaa2114533d7cdc823814b559ce1977d3dd8ac959f27aa2622b30",
+      "containment_report": "CR-0004",
+      "hermes_tag": "v2026.9.24",
+      "hermes_commit": "f97608f178d1ffeca59860195ab7da295f7c8e5f",
+      "route_id": "ROUTE-1",
+      "route_version": "1",
+      "model": "example-model-20260101",
+      "served_models": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+      "generation_settings": [
+        {
+          "agent": "extraction_agent",
+          "prompt_version": "Extraction prompt, version 1",
+          "max_tokens": 12288,
+          "generation_settings": {
+            "reasoning": "none",
+            "sampling": {"temperature": 0},
+            "body_without_messages_sha256": "235c1a53176a271370c185324b97ef45b7961386c33f68300a58721927a62a57"
+          }
+        }
+      ],
+      "budget_profile": {
+        "name": "evaluation",
+        "version": "ev-1",
+        "decision": "2026-12-01 - Evaluation caps frozen",
+        "per_agent": [
+          {
+            "agent": "extraction_agent",
+            "prompt_version": "Extraction prompt, version 1",
+            "limits": {
+              "max_tokens": 12288,
+              "max_iterations": 4,
+              "request_limit": 20,
+              "wall_clock_minutes": 30,
+              "input_cap": 32768
+            },
+            "stage_attempt_limit": 24
+          }
+        ]
+      },
+      "attempts": [
+        {
+          "attempt_id": "ATT-0101",
+          "agent": "extraction_agent",
+          "part": "whole",
+          "try": "first",
+          "packet_manifest": "E-0007",
+          "packet_sha256": "ca81a7a15367093d4fa91da503c86f6013baa367593fa1649aa90e2bede08be1",
+          "packet_bytes": {"packet": 51087, "input": 8137, "reference": 30200},
+          "prompt_id": "PR-0001",
+          "prompt_version": "Extraction prompt, version 1",
+          "reference_version": "Extraction reference, version 1",
+          "example_manifest_id": "EM-X-FEW-DEV-T9HQ4X",
+          "raw_output_sha256": "b6f3ba039ea11059917db8246adace8954d6eb7d72033d9a45741acada850451",
+          "outcome": "output",
+          "input_above_cap": true,
+          "validation": {"format_check": "passed", "content_findings": {"software_field_written": 1}},
+          "unknown_tool_calls": 0,
+          "requests": {"forwarded": 1, "refused": 0, "by_class": {"first": 1, "retry": 0, "continuation": 0, "unclassifiable": 0}},
+          "usage": {
+            "input_tokens": 1200,
+            "cache_write_tokens": 31950,
+            "cache_read_tokens": 0,
+            "input_total_tokens": 33150,
+            "output_tokens": 5400,
+            "reasoning_tokens": "not_reported"
+          },
+          "usage_unknown": {"categories": {}, "requests": 0},
+          "served_model": {"ids": ["example-model-20260101"], "not_reported": 0, "flagged": false},
+          "started_at": "2026-12-10T11:01:02Z",
+          "ended_at": "2026-12-10T11:07:29Z",
+          "runner_started_at": "2026-12-10T11:01:03Z",
+          "runner_ended_at": "2026-12-10T11:07:28Z"
+        }
+      ],
+      "software_steps": [],
+      "first_try_result": {"steps": [{"step": "extraction_agent", "result": "output", "attempt_ids": ["ATT-0101"]}]},
+      "final_result": {"steps": [{"step": "extraction_agent", "result": "output", "attempt_ids": ["ATT-0101"]}]},
+      "run_end": {"end": "completed"},
+      "started_at": "2026-12-10T11:00:05Z",
+      "ended_at": "2026-12-10T11:07:40Z"
+    }
+  ],
+  "$defs": {
+    "agent": {
+      "enum": ["extraction_agent", "verification_agent", "inquiry_agent"],
+      "description": "The agent (Handoffs 2.13)."
+    },
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "attempt_row": {
+      "type": "object",
+      "description": "One agent attempt of the run (section 10.3), first tries and technical re-runs alike, copied from the attempt entries wherever they hold a field; a field that only the attempt result holds is absent when there is none.",
+      "properties": {
+        "attempt_id": {"$ref": "#/$defs/ariadne_id"},
+        "agent": {"$ref": "#/$defs/agent"},
+        "part": {"$ref": "#/$defs/part"},
+        "try": {"$ref": "#/$defs/try"},
+        "rerun_of": {"$ref": "#/$defs/ariadne_id"},
+        "packet_manifest": {"$ref": "#/$defs/ariadne_id", "description": "The packet manifest's run-log entry (section 3.6)."},
+        "packet_sha256": {"$ref": "#/$defs/checksum", "description": "The checksum of the packet as stored."},
+        "packet_bytes": {
+          "type": "object",
+          "description": "The size of the packet and of its INPUT and REFERENCE blocks in bytes: the source bytes delivered (section 10.3; Run records 4.2). The key names inside are proposed.",
+          "properties": {
+            "packet": {"type": "integer", "minimum": 0, "description": "Proposed name."},
+            "input": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Proposed name. The INPUT block; absent for a packet without one."
+            },
+            "reference": {"type": "integer", "minimum": 0, "description": "Proposed name."}
+          },
+          "required": ["packet", "reference"],
+          "additionalProperties": false
+        },
+        "prompt_id": {"$ref": "#/$defs/ariadne_id"},
+        "prompt_version": {"type": "string", "minLength": 1},
+        "reference_version": {"type": "string", "minLength": 1},
+        "example_manifest_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The example manifest; in zero-shot the zero-shot manifest (section 3.3)."
+        },
+        "raw_output_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the stored raw output; absent only when nothing was returned."
+        },
+        "validation": {
+          "type": "object",
+          "description": "Absent when the attempt has no attempt result.",
+          "properties": {
+            "format_check": {
+              "enum": ["passed", "not_json", "not_in_format", "failure_form", "not_run"],
+              "description": "Proposed name for the key. passed; not_json or not_in_format, the class the format check gave (Handoffs 2.2); failure_form for the agent's failure form; or not_run when no candidate output reached the format check (section 10.3)."
+            },
+            "content_findings": {
+              "type": "object",
+              "additionalProperties": {"type": "integer", "minimum": 0},
+              "description": "Proposed name. The number of content-check findings by kind; for the inquiry agent the content checks of section 4.5."
+            }
+          },
+          "required": ["format_check"],
+          "additionalProperties": false
+        },
+        "question_screen_hits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Inquiry agent only: hits of the question screen (D23 A)."
+        },
+        "started_at": {"$ref": "#/$defs/utc_time", "description": "The container's start (container_started_at)."},
+        "ended_at": {"$ref": "#/$defs/utc_time", "description": "The container's end (container_ended_at)."},
+        "runner_started_at": {
+          "$ref": "#/$defs/utc_time",
+          "description": "The runner's own start; absent without an attempt result."
+        },
+        "runner_ended_at": {"$ref": "#/$defs/utc_time", "description": "The runner's own end; absent without an attempt result."},
+        "outcome": {
+          "enum": ["output", "technical_failure", "void"],
+          "description": "As in Handoffs 2.13; absent only for an attempt whose start-up self-check failed before the turn (code startup_check_failed; Run records 2.4), unless a monitor record is unexplained, which makes the attempt void with code containment_hit, or the monitoring evidence is incomplete, which makes it void with code monitor_incomplete (Runtime 13.2; AD-D06)."
+        },
+        "failure_class": {"$ref": "#/$defs/failure_class"},
+        "code": {
+          "enum": [
+            "route_refused",
+            "canary_hit",
+            "startup_check_failed",
+            "containment_hit",
+            "monitor_incomplete",
+            "runaway_guard",
+            "cap_hit"
+          ],
+          "description": "For a void attempt, a failed start-up self-check, the request guard under the development profile (runaway_guard) or the request cap under the evaluation profile (cap_hit) (Run records 2.4). Where several void conditions hold, the code is the first applicable of containment_hit, canary_hit, monitor_incomplete, route_refused and startup_check_failed (the last for a check repeated after the turn), in this order (Run records 2.4; Runtime 13.2, row 1); the record copies it and does not check the choice."
+        },
+        "cap_hit": {
+          "enum": ["output_tokens", "requests", "wall_clock"],
+          "description": "Evaluation profile only: the frozen cap that the attempt hit; otherwise absent. A cap checked before an attempt is named in a code entry instead (Run records 2.4, 2.8 and 4.10)."
+        },
+        "input_above_cap": {
+          "const": true,
+          "description": "Under the evaluation profile only: true when the provider reported more input tokens for a forwarded request than the frozen input cap (Run records 2.4 and 4.10); otherwise absent."
+        },
+        "unknown_tool_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Tool calls refused because no tool is offered (Handoffs 2.13); zero when no request was forwarded."
+        },
+        "requests": {"$ref": "#/$defs/requests_summary"},
+        "usage": {"$ref": "#/$defs/usage_totals"},
+        "usage_unknown": {"$ref": "#/$defs/usage_unknown_summary"},
+        "served_model": {"$ref": "#/$defs/served_model"}
+      },
+      "required": [
+        "attempt_id",
+        "agent",
+        "part",
+        "try",
+        "packet_manifest",
+        "packet_sha256",
+        "packet_bytes",
+        "prompt_id",
+        "prompt_version",
+        "reference_version",
+        "example_manifest_id",
+        "unknown_tool_calls",
+        "requests",
+        "usage",
+        "usage_unknown",
+        "served_model",
+        "started_at",
+        "ended_at"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {"$ref": "#/$defs/usage_flags"},
+        {
+          "if": {"properties": {"outcome": {"const": "output"}}, "required": ["outcome"]},
+          "then": {"properties": {"failure_class": false, "code": false, "cap_hit": false, "followed_by": false}}
+        },
+        {
+          "$comment": "Run records 2.4, row outcome, failure_class, code; Handoffs 2.13: outcome technical_failure requires failure_class, except in exactly the two classless cases that code identifies, runaway_guard (the request guard, development profile) and cap_hit (the frozen request cap, evaluation profile), each under its existing conditions below. No other code stands in for a class.",
+          "if": {"properties": {"outcome": {"const": "technical_failure"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {"failure_class": {"enum": ["not_json", "not_in_format", "truncated", "crashed", "failure_form"]}},
+            "if": {"properties": {"code": {"enum": ["runaway_guard", "cap_hit"]}}, "required": ["code"]},
+            "else": {"required": ["failure_class"]}
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "void"}}, "required": ["outcome"]},
+          "then": {
+            "required": ["failure_class", "code"],
+            "properties": {
+              "failure_class": {"enum": ["route_refused", "canary_hit", "startup_check_failed", "containment_hit", "monitor_incomplete"]},
+              "code": {"enum": ["route_refused", "canary_hit", "startup_check_failed", "containment_hit", "monitor_incomplete"]}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"cap_hit": {"const": "requests"}}, "required": ["cap_hit"]},
+          "then": {
+            "required": ["code"],
+            "properties": {"outcome": {"const": "technical_failure"}, "code": {"const": "cap_hit"}, "failure_class": false}
+          }
+        },
+        {
+          "if": {"properties": {"cap_hit": {"const": "output_tokens"}}, "required": ["cap_hit"]},
+          "then": {"required": ["failure_class"], "properties": {"failure_class": {"const": "truncated"}}}
+        },
+        {
+          "if": {"properties": {"cap_hit": {"const": "wall_clock"}}, "required": ["cap_hit"]},
+          "then": {"required": ["failure_class"], "properties": {"failure_class": {"const": "crashed"}}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "cap_hit"}}, "required": ["code"]},
+          "then": {"required": ["cap_hit"], "properties": {"cap_hit": {"const": "requests"}}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "runaway_guard"}}, "required": ["code"]},
+          "then": {"properties": {"outcome": {"const": "technical_failure"}, "failure_class": false}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "route_refused"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "route_refused"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "canary_hit"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "canary_hit"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "startup_check_failed"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "startup_check_failed"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "containment_hit"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "containment_hit"}}}
+        },
+        {
+          "if": {"properties": {"failure_class": {"const": "monitor_incomplete"}}, "required": ["failure_class"]},
+          "then": {"properties": {"code": {"const": "monitor_incomplete"}}}
+        },
+        {
+          "if": {"properties": {"try": {"const": "technical_rerun"}}, "required": ["try"]},
+          "then": {"required": ["rerun_of"]}
+        },
+        {
+          "if": {"properties": {"try": {"const": "first"}}, "required": ["try"]},
+          "then": {"properties": {"rerun_of": false}}
+        },
+        {
+          "if": {"not": {"required": ["outcome"]}},
+          "then": {
+            "required": ["code"],
+            "properties": {
+              "code": {"const": "startup_check_failed"},
+              "failure_class": false,
+              "cap_hit": false,
+              "requests": {"properties": {"forwarded": {"const": 0}}},
+              "validation": false,
+              "runner_started_at": false,
+              "runner_ended_at": false
+            }
+          }
+        },
+        {
+          "if": {"properties": {"agent": {"enum": ["inquiry_agent"]}}, "required": ["agent"]},
+          "else": {"properties": {"question_screen_hits": false}}
+        },
+        {
+          "if": {
+            "properties": {"requests": {"properties": {"forwarded": {"const": 0}}, "required": ["forwarded"]}},
+            "required": ["requests"]
+          },
+          "then": {
+            "properties": {
+              "validation": false,
+              "runner_started_at": false,
+              "runner_ended_at": false,
+              "input_above_cap": false,
+              "unknown_tool_calls": {"const": 0}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"requests": {"properties": {"forwarded": {"minimum": 1}}, "required": ["forwarded"]}},
+            "required": ["requests"]
+          },
+          "then": {"required": ["validation", "runner_started_at", "runner_ended_at"]}
+        }
+      ]
+    },
+    "check_result": {
+      "type": "object",
+      "description": "The result of a check that stopped a run or batch where no code applies (Run records 2.3; Evaluation interfaces 10.2, run_end).",
+      "properties": {
+        "entry": {
+          "enum": ["input_check", "schema_check"],
+          "description": "Proposed name. The run-log entry that carries the result (Run records 2.3)."
+        },
+        "result": {"enum": ["checksum_mismatch", "wrong_folder"], "description": "Proposed name."}
+      },
+      "required": ["entry", "result"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"entry": {"const": "schema_check"}}, "required": ["entry"]},
+          "then": {"properties": {"result": {"const": "checksum_mismatch"}}}
+        }
+      ]
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "code": {
+      "enum": [
+        "unknown_tool",
+        "not_admitted",
+        "packet_too_large",
+        "packet_check_failed",
+        "startup_check_failed",
+        "not_json",
+        "not_in_format",
+        "truncated",
+        "crashed",
+        "failure_form",
+        "route_refused",
+        "containment_hit",
+        "canary_hit",
+        "runaway_guard",
+        "home_not_empty",
+        "xml_refused",
+        "cap_hit",
+        "monitor_incomplete"
+      ],
+      "description": "A run-log code: the Stage 1 codes of Roles 8.7, home_not_empty, xml_refused, cap_hit and monitor_incomplete included, and of Handoffs 2.13. How the run log records those four is in Run records 2.8."
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$(?![\\s\\S])",
+      "description": "A git commit, abbreviated or full, in lowercase hexadecimal."
+    },
+    "condition": {"enum": ["zero_shot", "few_shot"], "description": "The condition (Evaluation interfaces 1.2 and 3.3)."},
+    "failure_class": {
+      "enum": [
+        "not_json",
+        "not_in_format",
+        "truncated",
+        "crashed",
+        "failure_form",
+        "route_refused",
+        "canary_hit",
+        "startup_check_failed",
+        "containment_hit",
+        "monitor_incomplete"
+      ],
+      "description": "For outcome technical_failure, its class (Handoffs 2.13); for outcome void, the code that made it void (Handoffs 2.13; Runtime 13.2, row 1)."
+    },
+    "generation_settings": {
+      "type": "object",
+      "description": "The reasoning setting and every sampling parameter as sent, with the checksum of the body without its messages (Run records 2.5, generation_settings).",
+      "properties": {
+        "reasoning": {
+          "anyOf": [{"type": "object"}, {"const": "none"}],
+          "description": "Proposed name. The reasoning setting as sent, or none (Runtime 12.1, row Reasoning setting)."
+        },
+        "sampling": {"type": "object", "description": "Proposed name. Every sampling parameter as sent, by name."},
+        "body_without_messages_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The checksum of the request body without its messages, so that requests can be compared."
+        }
+      },
+      "required": ["reasoning", "sampling", "body_without_messages_sha256"],
+      "additionalProperties": false
+    },
+    "part": {
+      "type": "string",
+      "minLength": 1,
+      "description": "whole, or the part label of an extraction in parts (Handoffs 2.13 and 4.3)."
+    },
+    "requests_summary": {
+      "type": "object",
+      "description": "Requests of an attempt (Run records 2.4, requests). Not expressed here: that first, retry and continuation add up to forwarded, and that unclassifiable is at most refused.",
+      "properties": {
+        "forwarded": {"type": "integer", "minimum": 0, "description": "Proposed name. Requests the gateway forwarded."},
+        "refused": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. Requests the gateway refused, counted apart and never as forwarded (Run records 4.2)."
+        },
+        "by_class": {
+          "type": "object",
+          "description": "Proposed name. Requests by class (Runtime 11.3): the forwarded requests as first, retry and continuation, which add up to forwarded, and the refused requests of class unclassifiable, which are counted among refused too and against the request guard or the frozen request cap (Run records 2.4 and 2.5). A refused request of another class is counted in refused only.",
+          "properties": {
+            "first": {"type": "integer", "minimum": 0},
+            "retry": {"type": "integer", "minimum": 0},
+            "continuation": {"type": "integer", "minimum": 0},
+            "unclassifiable": {"type": "integer", "minimum": 0}
+          },
+          "required": ["first", "retry", "continuation", "unclassifiable"],
+          "additionalProperties": false
+        },
+        "request_log_range": {
+          "type": "object",
+          "description": "Proposed name. Attempt entries only: the attempt's range in the request log (request, response and status entries), by the entries' seq; absent when the attempt has no entry in the request log.",
+          "properties": {
+            "first_seq": {"type": "integer", "minimum": 1, "description": "Proposed name."},
+            "last_seq": {"type": "integer", "minimum": 1, "description": "Proposed name."}
+          },
+          "required": ["first_seq", "last_seq"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["forwarded", "refused", "by_class"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$comment": "Run records 2.4 and 2.5: an unclassifiable request is always refused, so there is none where nothing was refused.",
+          "if": {"properties": {"refused": {"const": 0}}, "required": ["refused"]},
+          "then": {"properties": {"by_class": {"properties": {"unclassifiable": {"const": 0}}}}}
+        }
+      ]
+    },
+    "result_view": {
+      "type": "object",
+      "description": "One view of section 10.5: the first-try result or the final result. Void attempts appear in neither view.",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "enum": [
+                  "extraction_agent",
+                  "assembly_step",
+                  "deterministic_verifier",
+                  "verification_agent",
+                  "inquiry_agent"
+                ]
+              },
+              "result": {
+                "enum": ["output", "technical_failure", "not_reached"],
+                "description": "Proposed name. output; technical_failure; or not_reached for a later step of mode B after the view ended (section 10.5)."
+              },
+              "attempt_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {"$ref": "#/$defs/ariadne_id"},
+                "description": "Proposed name. The attempts whose output this view scores; several for an extraction in parts."
+              }
+            },
+            "required": ["step", "result"],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "result": {"const": "output"},
+                    "step": {"enum": ["extraction_agent", "verification_agent", "inquiry_agent"]}
+                  },
+                  "required": ["result", "step"]
+                },
+                "then": {"required": ["attempt_ids"], "properties": {"attempt_ids": {"minItems": 1}}}
+              }
+            ]
+          },
+          "description": "Proposed name."
+        }
+      },
+      "required": ["steps"],
+      "additionalProperties": false
+    },
+    "run_end": {
+      "type": "object",
+      "description": "How the run ended (section 10.2, run_end).",
+      "properties": {
+        "end": {
+          "enum": ["completed", "technical_failure", "not_run", "stopped"],
+          "description": "Proposed name. Section 10.4."
+        },
+        "code": {
+          "$ref": "#/$defs/code",
+          "description": "The code where one applies, copied from the run-log entry that carries it."
+        },
+        "check_result": {
+          "$ref": "#/$defs/check_result",
+          "description": "Proposed name. Where no code applies, the result of the check that stopped the run."
+        },
+        "software_step": {
+          "enum": ["assembly_step", "deterministic_verifier", "answer_application", "final_generation_step"],
+          "description": "For a software step that could not finish or failed its self-check, the step named (section 10.4)."
+        },
+        "cap_hit": {
+          "enum": ["input_tokens", "attempts"],
+          "description": "Where a frozen cap stopped a step before an attempt started (code cap_hit): input_tokens or attempts; absent for a request-cap hit, which the attempt row's cap_hit names (section 10.3)."
+        }
+      },
+      "required": ["end"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"end": {"const": "completed"}}, "required": ["end"]},
+          "then": {"properties": {"code": false, "check_result": false, "software_step": false, "cap_hit": false}}
+        },
+        {
+          "if": {"properties": {"end": {"enum": ["technical_failure", "not_run", "stopped"]}}, "required": ["end"]},
+          "then": {"oneOf": [{"required": ["code"]}, {"required": ["check_result"]}, {"required": ["software_step"]}]}
+        },
+        {
+          "if": {"required": ["cap_hit"]},
+          "then": {"required": ["code"], "properties": {"code": {"const": "cap_hit"}}}
+        },
+        {
+          "if": {"properties": {"code": {"const": "packet_too_large"}}, "required": ["code"]},
+          "then": {"properties": {"end": {"const": "not_run"}}}
+        }
+      ]
+    },
+    "served_model": {
+      "type": "object",
+      "description": "The served model the provider reported (Run records 2.4; Evaluation interfaces 10.2 and 10.3).",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1},
+          "description": "Proposed name. The served-model ids the provider reported."
+        },
+        "not_reported": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. Forwarded requests whose response reported no served-model id, for example a cut stream or a response that never arrived; never flagged as a different model."
+        },
+        "flagged": {
+          "type": "boolean",
+          "description": "Proposed name. true when a reported id differs from the route's model; the run is listed for review (Evaluation interfaces 10.2 and 11, rule 3)."
+        }
+      },
+      "required": ["ids", "not_reported", "flagged"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"flagged": {"const": true}}, "required": ["flagged"]},
+          "then": {"properties": {"ids": {"minItems": 1}}}
+        }
+      ]
+    },
+    "try": {"enum": ["first", "technical_rerun"], "description": "The try (Handoffs 2.13; D14 A)."},
+    "usage_flags": {
+      "$comment": "Run records 4.3 and 4.4, rules 1 and 2: for each usage category, a total over forwarded requests that lacks the category carries it in usage_unknown.categories; a missing count is never silent and never zero. A reported count may stand beside its flag, provisional. With no forwarded request nothing can be unknown, and the rule does not apply.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "input_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "input_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "cache_write_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "cache_write_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "cache_read_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "cache_read_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "output_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "output_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requests": {
+                "properties": {
+                  "forwarded": {
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "forwarded"
+                ]
+              },
+              "usage": {
+                "not": {
+                  "required": [
+                    "reasoning_tokens"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "requests",
+              "usage"
+            ]
+          },
+          "then": {
+            "required": [
+              "usage_unknown"
+            ],
+            "properties": {
+              "usage_unknown": {
+                "properties": {
+                  "categories": {
+                    "required": [
+                      "reasoning_tokens"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "usage_totals": {
+      "type": "object",
+      "description": "Token totals over the forwarded requests, from the counts the provider reported, incomplete ones included (Run records 2.4 and 4.3). A category with no reported count on any request is absent, never zero; usage_unknown says which categories are missing or incomplete and on how many requests, and a total of such a category is provisional, never final, and never sets or calibrates a token cap (Run records 4.4, rules 1 to 3).",
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0, "description": "Uncached input tokens."},
+        "cache_write_tokens": {"type": "integer", "minimum": 0, "description": "Cache-write tokens."},
+        "cache_read_tokens": {"type": "integer", "minimum": 0, "description": "Cache-read tokens."},
+        "input_total_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. Uncached input plus cache writes plus cache reads, each counted once (Run records 4.2)."
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "All generated tokens, reasoning included (Run records 4.2)."
+        },
+        "reasoning_tokens": {
+          "anyOf": [{"type": "integer", "minimum": 0}, {"const": "not_reported"}],
+          "description": "The reasoning share of the output where the provider reports it separately; otherwise not_reported, never zero (Run records 4.2 and 4.4, rule 4)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "usage_unknown_summary": {
+      "type": "object",
+      "description": "The unknown-usage flag that travels with totals (Run records 4.3 and 4.4): a total that includes a missing or incomplete count carries it and is provisional. A missing count is never written as zero.",
+      "properties": {
+        "categories": {
+          "type": "object",
+          "propertyNames": {
+            "enum": ["input_tokens", "cache_write_tokens", "cache_read_tokens", "output_tokens", "reasoning_tokens"]
+          },
+          "additionalProperties": {"type": "integer", "minimum": 1},
+          "description": "Proposed name. Each usage category that is missing or incomplete on any request, with the number of requests on which it is."
+        },
+        "requests": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Proposed name. The number of requests with any missing or incomplete usage category; 0 when usage is complete."
+        }
+      },
+      "required": ["categories", "requests"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"requests": {"const": 0}}, "required": ["requests"]},
+          "then": {"properties": {"categories": {"maxProperties": 0}}},
+          "else": {"properties": {"categories": {"minProperties": 1}}}
+        }
+      ]
+    },
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}

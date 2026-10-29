@@ -1,0 +1,491 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ariadne:design:evaluation-packet-manifest:v1.2",
+  "title": "Evaluation packet manifest",
+  "description": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Draft: ARIADNE specifies this format and Tillman Heisner freezes its version (section 1.3; D9 A). The packet manifest of a packet of an evaluation or measurement batch, in its run-log form: the packet_manifest entry of design/RUN_RECORDS.md 2.3, with the fields of design/HANDOFFS.md 2.4 and the fields that section 3.6 adds (item_id, condition, repetition, placed_files, issue_ids). Agents never see it.",
+  "$comment": "Derived from design/EVALUATION_INTERFACES.md 1.2 (Draft); the document wins. Handoffs 2.4 lists the packet-manifest fields and names only packet_sha256 and packet_sent_sha256; the other names in $defs/packet_manifest_part are proposed, except those that Handoffs 2.13, Run records 2.4 and sections 3.3, 3.6 and 10.3 already use. $defs/packet_manifest_part and $defs/evaluation_packet_part are identical to their copies in run-log-entry.schema.json. The common field files keeps its meaning (the stored files the step read and wrote), so that no entry holds two fields of one name. Software computes every checksum the entry holds, and these checksums are kept in the run log only (section 3.6; D13 A). Not expressed here: the Check of section 3.6 (each placed file read from the input folder, the example store or the run's own folder, and its two checksums equal), which software runs while the packet is built and records in the input_check entry; that issue_ids match the ISSUES block; that the checksum of the INPUT block is input_sha256, because the block is the stored input byte for byte (Handoffs 2.4); the report-filter check of section 3.5, which the scorer runs. The examples are illustrative: ids, times, checksums, sizes, counts and names are made up. In the example, the six blocks hold 640 (HEADER), 41,000 (REFERENCE), 12,000 (EXAMPLES), 8,137 (INPUT), 12,900 (DRAFT) and 1,400 (ISSUES) bytes, 76,077 in all, and the twelve markers, each of ten characters and a line feed, add 132 bytes: the packet is 76,209 bytes. The INPUT block has the size of the stored T9HQ4X file, which is real; the example's input, variant V-0007, is made up as a copy of it in which a value was changed without changing the length.",
+  "type": "object",
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The entry's position in its file, counted from 1, without gaps (Run records 2.3; 2.10, rule 2)."
+    },
+    "entry_id": {
+      "$ref": "#/$defs/ariadne_id",
+      "description": "Written by software, unique within the run (Run records 2.3)."
+    },
+    "run_id": {"$ref": "#/$defs/ariadne_id"},
+    "record_id": {"$ref": "#/$defs/ariadne_id"},
+    "round": {"const": 1, "description": "Every evaluation packet names round 1 (section 3.5)."},
+    "run_kind": {"enum": ["evaluation", "measurement"], "description": "evaluation or measurement (Run records 2.3)."},
+    "kind": {"const": "packet_manifest"},
+    "at": {
+      "$ref": "#/$defs/utc_time",
+      "description": "When the entry was written, from the software clock (Run records 2.3)."
+    },
+    "source": {"const": "workflow_controller"},
+    "cause": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/ariadne_id"}},
+    "files": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/file_ref"},
+      "description": "File references of the stored files the step read and wrote (Run records 2.3)."
+    }
+  },
+  "required": ["seq", "entry_id", "run_id", "record_id", "round", "run_kind", "kind", "at", "source"],
+  "allOf": [{"$ref": "#/$defs/packet_manifest_part"}, {"$ref": "#/$defs/evaluation_packet_part"}],
+  "unevaluatedProperties": false,
+  "examples": [
+    {
+      "seq": 7,
+      "entry_id": "E-0007",
+      "run_id": "RUN-0103",
+      "record_id": "REC-0103",
+      "round": 1,
+      "run_kind": "evaluation",
+      "kind": "packet_manifest",
+      "at": "2026-11-21T10:00:00Z",
+      "source": "workflow_controller",
+      "files": [
+        {
+          "artifact_id": "AR-0021",
+          "path": "files/AR-0021.txt",
+          "sha256": "e3b0e0c215843b878607b55485d88ba9623b4f48230d81514bd2da8c46e44b92",
+          "bytes": 76209,
+          "media_type": "text/plain"
+        }
+      ],
+      "agent": "verification_agent",
+      "attempt_id": "ATT-0002",
+      "part": "whole",
+      "try": "first",
+      "input_format": "strenda_export_xml",
+      "input_entry": {"list": "variant_list", "id": "V-0007"},
+      "input_sha256": "036120db0d2994817d0e08d844f26b9994e6813687f3f06a08ee4713194d0fa9",
+      "prompt_id": "PR-0002",
+      "prompt_version": "Verification prompt, version 1",
+      "reference_id": "RF-0002",
+      "reference_version": "Verification reference, version 1",
+      "example_manifest_id": "EM-V-FEW-DEV-T9HQ4X",
+      "block_markers": {
+        "HEADER": "<<H-7f3a>>",
+        "REFERENCE": "<<R-19c2>>",
+        "EXAMPLES": "<<E-c0de>>",
+        "INPUT": "<<I-55aa>>",
+        "DRAFT": "<<D-2b1e>>",
+        "ISSUES": "<<S-0f9d>>"
+      },
+      "blocks": [
+        {
+          "block": "HEADER",
+          "bytes": 640,
+          "sha256": "5908ddf2c0467f750c652fb81777bb841467d168040bdeb7a1160a8be95e11ed"
+        },
+        {
+          "block": "REFERENCE",
+          "bytes": 41000,
+          "sha256": "3254fbb670952872b6b55c4973e07c0e754c19c36f605acc44f34e44745243b9"
+        },
+        {
+          "block": "EXAMPLES",
+          "bytes": 12000,
+          "sha256": "1e2dd56c655ba00dda83759b1c8e037451fad385c5ea0ff833465d6dbdf56275"
+        },
+        {
+          "block": "INPUT",
+          "bytes": 8137,
+          "sha256": "036120db0d2994817d0e08d844f26b9994e6813687f3f06a08ee4713194d0fa9"
+        },
+        {
+          "block": "DRAFT",
+          "bytes": 12900,
+          "sha256": "21998df4bba9f8aac591a38cfdeb6d1d4dff9caa4338f118e9687de7d2cc5235"
+        },
+        {
+          "block": "ISSUES",
+          "bytes": 1400,
+          "sha256": "098c5b79e84b9fe12459f8c276c655254d0cb5726d97a0a53534224a5bda3bbb"
+        }
+      ],
+      "packet": {
+        "artifact_id": "AR-0021",
+        "path": "files/AR-0021.txt",
+        "sha256": "e3b0e0c215843b878607b55485d88ba9623b4f48230d81514bd2da8c46e44b92",
+        "bytes": 76209,
+        "media_type": "text/plain"
+      },
+      "packet_sent_sha256": "8f2b1c4e6a0d3957b1e4c2a8d6f0937e5c1b2a4d8e6f0a3c5b7d9e1f2a4c6b8d",
+      "prompt_sha256": "c28647e5754a240d4e9978da0f4aa7c64cb36f8439377616e4a454d47e7958cc",
+      "reference_sha256": "d342c0f0c6e5edf9297a75451d5152e91249a5ae19536e43301f437bd972eeb8",
+      "item_id": "IT-0042",
+      "condition": "few_shot",
+      "repetition": 2,
+      "placed_files": [
+        {
+          "placed_as": "input",
+          "folder": "evaluation/input",
+          "sha256": "036120db0d2994817d0e08d844f26b9994e6813687f3f06a08ee4713194d0fa9",
+          "compared_sha256": "036120db0d2994817d0e08d844f26b9994e6813687f3f06a08ee4713194d0fa9",
+          "compared_with": "variant_list"
+        },
+        {
+          "placed_as": "frozen_draft",
+          "folder": "evaluation/input",
+          "sha256": "7743ce348d9284d677a185f33295b92266cc435a5b5f775029b300066d26693a",
+          "compared_sha256": "7743ce348d9284d677a185f33295b92266cc435a5b5f775029b300066d26693a",
+          "compared_with": "item_list"
+        },
+        {
+          "placed_as": "frozen_evidence_entries",
+          "folder": "evaluation/input",
+          "sha256": "ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e",
+          "compared_sha256": "ee8250fb76e094b34b471f13a73dbbe51d1ae142e9df59d7c0d31ec20f0a0a8e",
+          "compared_with": "item_list"
+        },
+        {
+          "placed_as": "frozen_not_mapped_report",
+          "folder": "evaluation/input",
+          "sha256": "2ca7289b5248632c8fe5386b972e8fde6585068c5cb8e2948489e10e7be6d4d8",
+          "compared_sha256": "2ca7289b5248632c8fe5386b972e8fde6585068c5cb8e2948489e10e7be6d4d8",
+          "compared_with": "item_list"
+        },
+        {
+          "placed_as": "frozen_round_1_issues",
+          "folder": "evaluation/input",
+          "sha256": "02e3fe5aad80ca85ace4db35008faabe7950c53998160c66c9072b6fd33dec0f",
+          "compared_sha256": "02e3fe5aad80ca85ace4db35008faabe7950c53998160c66c9072b6fd33dec0f",
+          "compared_with": "item_list"
+        },
+        {
+          "placed_as": "example_file",
+          "folder": "evaluation/examples",
+          "sha256": "1eeffe64ffed560e873c2329ca0da9aa4357d412ff6eea74cefbaa8d841ba44e",
+          "compared_sha256": "1eeffe64ffed560e873c2329ca0da9aa4357d412ff6eea74cefbaa8d841ba44e",
+          "compared_with": "example_manifest"
+        }
+      ],
+      "issue_ids": ["ISS-001", "ISS-002", "ISS-003"]
+    }
+  ],
+  "$defs": {
+    "agent": {
+      "enum": ["extraction_agent", "verification_agent", "inquiry_agent"],
+      "description": "The agent (Handoffs 2.13)."
+    },
+    "ariadne_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$(?![\\s\\S])",
+      "description": "An ARIADNE identifier or local link name: a letter, then at most 127 letters, digits, dots, underscores, colons or hyphens (design/HANDOFFS.md 2.1), for example HA-001."
+    },
+    "block": {
+      "type": "object",
+      "description": "One block of the packet with its size and checksum (Handoffs 2.4, Packet manifest).",
+      "properties": {
+        "block": {
+          "enum": [
+            "HEADER",
+            "REFERENCE",
+            "EXAMPLES",
+            "INPUT",
+            "LINK NAMES",
+            "DRAFT",
+            "ISSUES",
+            "EARLIER",
+            "TECHNICAL NOTE"
+          ],
+          "description": "Proposed name. The block name (Roles 7.2)."
+        },
+        "bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. The block's size in bytes."},
+        "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name."}
+      },
+      "required": ["block", "bytes", "sha256"],
+      "additionalProperties": false
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+      "description": "A checksum: the SHA-256 of a file's exact bytes as stored, 64 lowercase hexadecimal characters, computed by software (Run records 1.2 and 2.9; Evaluation interfaces, section 3)."
+    },
+    "compared_with": {
+      "enum": [
+        "input_set_manifest",
+        "variant_list",
+        "item_list",
+        "example_manifest",
+        "run_log",
+        "run_started",
+        "resumed",
+        "fixture_store"
+      ],
+      "description": "Proposed values. What a checksum was compared with (Run records 2.3, input_check): the input-set manifest, the variant list, the item list or the example manifest; run_log for a stored file, against the file reference that the run log recorded when it was stored: an earlier output of a mode B run, a round snapshot, an answer file or an answer original (Run records 2.9); run_started or resumed for the budget profile file; fixture_store for a fixture input (Containment 12.4)."
+    },
+    "condition": {"enum": ["zero_shot", "few_shot"], "description": "The condition (Evaluation interfaces 1.2 and 3.3)."},
+    "evaluation_packet_part": {
+      "description": "The fields that Evaluation interfaces 3.6 adds for a packet of an evaluation or measurement batch.",
+      "type": "object",
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1, "description": "The item (Evaluation interfaces 3.4)."},
+        "condition": {"$ref": "#/$defs/condition"},
+        "repetition": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The repetition's number (Evaluation interfaces 10.2)."
+        },
+        "placed_files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/placed_file"},
+          "description": "Every file placed in the packet, one row each (Evaluation interfaces 3.6)."
+        },
+        "issue_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/issue_id"},
+          "description": "The issue ids placed in the ISSUES block, in order; for the inquiry agent, the askable ids that the report filter kept (Evaluation interfaces 3.5 and 3.6)."
+        }
+      },
+      "required": ["item_id", "condition", "repetition", "placed_files"],
+      "allOf": [
+        {
+          "if": {"properties": {"agent": {"enum": ["verification_agent", "inquiry_agent"]}}, "required": ["agent"]},
+          "then": {"required": ["issue_ids"]}
+        },
+        {
+          "if": {"properties": {"agent": {"const": "extraction_agent"}}, "required": ["agent"]},
+          "then": {"properties": {"issue_ids": false}}
+        }
+      ]
+    },
+    "file_ref": {
+      "type": "object",
+      "description": "A file reference (Run records 1.2): how a run-log entry names a stored file, by its artifact id, its place in the run or batch folder, its checksum, its size in bytes and its media type. File references exist in the run log only, never in a record file, handoff or packet.",
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The file's artifact id (Handoffs 2.1)."},
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/]",
+          "description": "Proposed name. The file's place in the run or batch folder (Run records 2.2), relative to that folder."
+        },
+        "sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The file's checksum (Run records 2.9)."},
+        "bytes": {"type": "integer", "minimum": 0, "description": "Proposed name. The file's size in bytes."},
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(\\s*;.*)?$",
+          "description": "Proposed name. The file's media type, for example application/json."
+        }
+      },
+      "required": ["artifact_id", "path", "sha256", "bytes", "media_type"],
+      "additionalProperties": false
+    },
+    "input_entry": {
+      "type": "object",
+      "description": "The input entry (Run records 2.3, run_started; Handoffs 2.4).",
+      "properties": {
+        "list": {
+          "enum": ["input_set_manifest", "variant_list", "fixture_store"],
+          "description": "Proposed name. Where the input is listed: the input-set manifest, the variant list, or, for a fixture of a suite run or a behaviour-variant run, the fixture store."
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Proposed name. The entry id, variant id or fixture-store entry."
+        }
+      },
+      "required": ["list", "id"],
+      "additionalProperties": false
+    },
+    "issue_id": {
+      "type": "string",
+      "pattern": "^ISS-[0-9]{3,}$(?![\\s\\S])",
+      "description": "An issue id: ISS-001 and so on (Issue format 4). Written by software, never by an agent."
+    },
+    "packet_manifest_part": {
+      "description": "The fields that Handoffs 2.4 (Packet manifest) lists, with the packet's file reference (Run records 2.3, packet_manifest). Handoffs 2.4 names only packet_sha256 and packet_sent_sha256; the other names here are proposed, except those that Handoffs 2.13, Run records 2.4 and Evaluation interfaces 3.3, 3.6 and 10.3 already use.",
+      "type": "object",
+      "properties": {
+        "agent": {"$ref": "#/$defs/agent"},
+        "attempt_id": {"$ref": "#/$defs/ariadne_id"},
+        "part": {"$ref": "#/$defs/part"},
+        "try": {"$ref": "#/$defs/try"},
+        "part_position": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Proposed name. For a part, its position (Handoffs 4.3)."
+        },
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/ariadne_id"},
+          "description": "Proposed name. For a part, the attempt ids of the parts it depends on."
+        },
+        "input_format": {"const": "strenda_export_xml", "description": "Proposed name. The input format (Handoffs 2.3)."},
+        "input_entry": {"$ref": "#/$defs/input_entry", "description": "Proposed name."},
+        "input_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The input's checksum as verified (Handoffs 2.3)."
+        },
+        "prompt_id": {
+          "$ref": "#/$defs/ariadne_id",
+          "description": "The prompt's artifact id (as in Evaluation interfaces 10.3)."
+        },
+        "prompt_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The prompt's version name, a label written by people (Roles 1.2)."
+        },
+        "prompt_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the prompt version (Handoffs 2.4; Roles 7.1, rule 7)."
+        },
+        "reference_id": {"$ref": "#/$defs/ariadne_id", "description": "Proposed name. The reference text's artifact id."},
+        "reference_version": {"type": "string", "minLength": 1, "description": "The reference text's version."},
+        "reference_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the reference-text version (Handoffs 2.4; Roles 7.1, rule 7)."
+        },
+        "example_manifest_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The example manifest named for the attempt, for every packet; in zero-shot a zero-shot manifest that lists no example (Handoffs 2.4; Roles 7.6; Evaluation interfaces 3.3)."
+        },
+        "block_markers": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "HEADER",
+              "REFERENCE",
+              "EXAMPLES",
+              "INPUT",
+              "LINK NAMES",
+              "DRAFT",
+              "ISSUES",
+              "EARLIER",
+              "TECHNICAL NOTE"
+            ]
+          },
+          "additionalProperties": {"type": "string", "minLength": 1},
+          "description": "Proposed name. The block markers that software drew for this packet, by block (Roles 7.2)."
+        },
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/block"},
+          "allOf": [
+            {"contains": {"properties": {"block": {"const": "HEADER"}}, "required": ["block"]}},
+            {"contains": {"properties": {"block": {"const": "REFERENCE"}}, "required": ["block"]}}
+          ],
+          "description": "Proposed name. Each block with its size in bytes and its checksum. Every packet has HEADER and REFERENCE (Handoffs 2.4)."
+        },
+        "packet": {
+          "$ref": "#/$defs/file_ref",
+          "description": "Proposed name. The packet's file reference; its sha256 is packet_sha256, the packet's checksum as stored (Handoffs 2.4; Run records 2.4)."
+        },
+        "packet_sent_sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "The checksum of the packet text as Hermes sends it, which the launcher registers at the model gateway (Handoffs 2.4; Run records 2.4; Runtime 10.3, step 2)."
+        }
+      },
+      "required": [
+        "agent",
+        "attempt_id",
+        "part",
+        "try",
+        "input_format",
+        "input_entry",
+        "input_sha256",
+        "prompt_id",
+        "prompt_version",
+        "prompt_sha256",
+        "reference_id",
+        "reference_version",
+        "reference_sha256",
+        "example_manifest_id",
+        "block_markers",
+        "blocks",
+        "packet",
+        "packet_sent_sha256"
+      ],
+      "allOf": [
+        {
+          "if": {"properties": {"part": {"const": "whole"}}, "required": ["part"]},
+          "then": {"properties": {"part_position": false, "depends_on": false}},
+          "else": {"required": ["part_position", "depends_on"]}
+        }
+      ]
+    },
+    "part": {
+      "type": "string",
+      "minLength": 1,
+      "description": "whole, or the part label of an extraction in parts (Handoffs 2.13 and 4.3)."
+    },
+    "placed_file": {
+      "type": "object",
+      "description": "One file placed in the packet (Evaluation interfaces 3.6, placed_files).",
+      "properties": {
+        "placed_as": {
+          "enum": [
+            "input",
+            "frozen_draft",
+            "frozen_evidence_entries",
+            "frozen_not_mapped_report",
+            "frozen_round_1_issues",
+            "frozen_judgments",
+            "example_file",
+            "earlier_output"
+          ],
+          "description": "Proposed name. Its part in the packet: input, frozen draft, frozen evidence entries, frozen not-mapped report, frozen round-1 issues, frozen judgments, example file, or, in mode B, an earlier output of the run (Evaluation interfaces 3.6)."
+        },
+        "folder": {"type": "string", "minLength": 1, "description": "Proposed name. The folder it was read from."},
+        "sha256": {
+          "$ref": "#/$defs/checksum",
+          "description": "Proposed name. The checksum computed when the packet was built."
+        },
+        "compared_sha256": {"$ref": "#/$defs/checksum", "description": "Proposed name. The checksum it was compared with."},
+        "compared_with": {"$ref": "#/$defs/compared_with", "description": "Proposed name."}
+      },
+      "required": ["placed_as", "folder", "sha256", "compared_sha256", "compared_with"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"placed_as": {"const": "input"}}, "required": ["placed_as"]},
+          "then": {"properties": {"compared_with": {"enum": ["input_set_manifest", "variant_list"]}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "placed_as": {
+                "enum": [
+                  "frozen_draft",
+                  "frozen_evidence_entries",
+                  "frozen_not_mapped_report",
+                  "frozen_round_1_issues",
+                  "frozen_judgments"
+                ]
+              }
+            },
+            "required": ["placed_as"]
+          },
+          "then": {"properties": {"compared_with": {"const": "item_list"}}}
+        },
+        {
+          "if": {"properties": {"placed_as": {"const": "example_file"}}, "required": ["placed_as"]},
+          "then": {"properties": {"compared_with": {"const": "example_manifest"}}}
+        },
+        {
+          "if": {"properties": {"placed_as": {"const": "earlier_output"}}, "required": ["placed_as"]},
+          "then": {"properties": {"compared_with": {"const": "run_log"}}}
+        }
+      ]
+    },
+    "try": {"enum": ["first", "technical_rerun"], "description": "The try (Handoffs 2.13; D14 A)."},
+    "utc_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$(?![\\s\\S])",
+      "description": "A date and time in RFC 3339 form, in UTC, for example 2026-10-20T14:03:00Z (design/HANDOFFS.md 2.1, Timestamps)."
+    }
+  }
+}
